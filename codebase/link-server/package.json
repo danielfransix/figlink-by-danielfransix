@@ -1,0 +1,12 @@
+{
+  "name": "figlink-server",
+  "version": "1.0.0",
+  "description": "Figlink — WebSocket link server between Claude and the Figma plugin",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
+}
