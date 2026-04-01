@@ -81,7 +81,7 @@
     .hint-row:first-child { border-top: none; }
 
     .hint-os {
-      font-size: 10px;
+      font-size: 11px;
       color: #3a3a3a;
       letter-spacing: 0.06em;
       text-transform: uppercase;
@@ -91,7 +91,7 @@
     .hint-os.active { color: #888; }
 
     .hint-action {
-      font-size: 12px;
+      font-size: 11px;
       color: #383838;
       line-height: 1.4;
     }
@@ -123,7 +123,7 @@
     .banner.visible { display: flex; }
 
     .banner-title {
-      font-size: 13px;
+      font-size: 11px;
       color: #f59e0b;
       display: flex;
       align-items: center;
@@ -131,11 +131,11 @@
     }
     .banner-title::before {
       content: '⚠';
-      font-size: 12px;
+      font-size: 11px;
     }
 
     .banner-body {
-      font-size: 12px;
+      font-size: 11px;
       color: #8a7040;
       line-height: 1.5;
     }
@@ -148,7 +148,7 @@
       border: none;
       border-radius: 4px;
       font-family: 'Cal Sans', sans-serif;
-      font-size: 13px;
+      font-size: 11px;
       cursor: pointer;
       letter-spacing: 0.01em;
       transition: background 0.15s;
@@ -171,23 +171,68 @@
       height: 40px;
       display: flex;
       align-items: center;
-      justify-content: space-between;
+      gap: 8px;
       flex-shrink: 0;
+    }
+
+    .footer-divider {
+      color: #2a2a2a;
+      font-size: 11px;
+      margin: 0 2px;
     }
 
     .footer-brand {
       font-family: 'Cal Sans', sans-serif;
-      font-size: 13px;
+      font-size: 11px;
       color: #ffffff;
       letter-spacing: 0.04em;
     }
 
-    .footer-author {
+    /* ── Author row ── */
+    .author-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 20px;
+      border-top: 1px solid #1e1e1e;
+      flex-shrink: 0;
+    }
+
+    .author-divider {
+      color: #2a2a2a;
+      font-size: 11px;
+      margin: 0 2px;
+    }
+
+    .author-label {
       font-family: 'Cal Sans', sans-serif;
-      font-size: 12px;
+      font-size: 11px;
+      color: #3a3a3a;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+
+    .author-name {
+      font-family: 'Cal Sans', sans-serif;
+      font-size: 11px;
+      color: #c0c0c0;
+      letter-spacing: 0.01em;
+    }
+
+    .footer-links {
+      font-family: 'Cal Sans', sans-serif;
+      font-size: 11px;
       color: rgba(255, 255, 255, 0.75);
       letter-spacing: 0.01em;
     }
+
+    .footer-link {
+      font-size: 11px;
+      cursor: pointer;
+      color: rgba(255, 255, 255, 0.75);
+      transition: color 0.15s;
+    }
+    .footer-link:hover { color: #fff; }
   </style>
 </head>
 <body>
@@ -233,10 +278,20 @@
     <div class="shortcut">Re-run shortcut &nbsp;·&nbsp; ⌘⌥P on Mac &nbsp;·&nbsp; Ctrl+Alt+P on Windows</div>
   </div>
 
+  <!-- Author row -->
+  <div class="author-row">
+    <span class="author-label">Author:</span>
+    <span class="author-name">Daniel Fransix</span>
+    <span class="author-divider">|</span>
+    <span class="author-label">Social:</span>
+    <span class="footer-link" id="xLink">x.com/danielfransix</span>
+  </div>
+
   <!-- Footer -->
   <div class="footer">
     <span class="footer-brand">Figlink</span>
-    <span class="footer-author">by Daniel Fransix &nbsp;·&nbsp; x.com/danielfransix</span>
+    <span class="footer-divider">|</span>
+    <span class="footer-link" id="coffeeLink">☕ Buy me a coffee</span>
   </div>
 
   <script>
@@ -251,6 +306,7 @@
     let ws = null;
     let retryTimer = null;
     let pendingMessages = [];
+    let fileInfo = null; // { fileKey, fileName } — received from code.js on load
 
     // ── OS detection ──────────────────────────────────────────────────────────
     const platform = (navigator.platform || '').toUpperCase();
@@ -304,7 +360,7 @@
       ws = new WebSocket(LINK_URL);
 
       ws.onopen = () => {
-        ws.send(JSON.stringify({ type: 'register', role: 'plugin' }));
+        ws.send(JSON.stringify({ type: 'register', role: 'plugin', ...(fileInfo || {}) }));
         pendingMessages.forEach(msg => ws.send(JSON.stringify(msg)));
         pendingMessages = [];
       };
@@ -314,7 +370,8 @@
         try { msg = JSON.parse(event.data); } catch { return; }
 
         if (msg.type === 'registered') {
-          setState('connected', 'Connected', 'Linked · ready for commands');
+          const detail = fileInfo ? `${fileInfo.fileName} · ready` : 'Linked · ready for commands';
+          setState('connected', 'Connected', detail);
           hideHint();
           return;
         }
@@ -346,6 +403,16 @@
     window.onmessage = (event) => {
       const msg = event.data && event.data.pluginMessage;
       if (!msg) return;
+
+      // File identity sent by code.js on plugin load — store and (re-)register if WS is already open
+      if (msg.type === 'file_info') {
+        fileInfo = { fileKey: msg.fileKey, fileName: msg.fileName };
+        if (ws && ws.readyState === WebSocket.OPEN) {
+          ws.send(JSON.stringify({ type: 'register', role: 'plugin', ...fileInfo }));
+        }
+        return;
+      }
+
       if (ws && ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify(msg));
       } else {
@@ -356,6 +423,14 @@
 
     document.getElementById('reloadBtn').addEventListener('click', () => {
       parent.postMessage({ pluginMessage: { type: 'close_plugin' } }, '*');
+    });
+
+    document.getElementById('xLink').addEventListener('click', () => {
+      parent.postMessage({ pluginMessage: { type: 'open_url', url: 'https://x.com/danielfransix' } }, '*');
+    });
+
+    document.getElementById('coffeeLink').addEventListener('click', () => {
+      parent.postMessage({ pluginMessage: { type: 'open_url', url: 'https://danielfransix.short.gy/buy-coffee' } }, '*');
     });
 
     connect();

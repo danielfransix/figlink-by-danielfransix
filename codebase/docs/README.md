@@ -1,14 +1,16 @@
 # Figlink
 
-Figlink lets an AI assistant (in any IDE) control your Figma file in real time — reading layers, renaming things, applying styles, binding variables, and more — just by you describing what you want.
+Figlink lets an AI assistant (in any IDE) control your Figma files in real time — reading layers, renaming things, applying styles, binding variables, and more — just by you describing what you want.
 
 ---
 
 ## What is Figlink?
 
-Figlink is a live connection between your AI coding assistant and Figma. Once set up, you tell your AI what you want done in Figma ("standardize this frame", "rename all the text layers", "apply the spacing variables") and it figures out the right commands and executes them directly inside your open Figma file.
+Figlink is a live connection between your AI coding assistant and Figma. Once set up, you tell your AI what you want done in Figma and it figures out the right commands and executes them directly inside your open Figma file.
 
-The AI doesn't just follow a fixed script. It reads the state of your file, thinks about what needs to change, and writes or updates its own tools as needed to get the job done. You describe the goal — Figlink handles the execution.
+The AI doesn't follow a fixed script. It reads the state of your file, thinks about what needs to change, and executes directly. You describe the goal — Figlink handles the execution.
+
+Multiple Figma files can be connected simultaneously, so the AI can reference one file and act on another in the same workflow.
 
 ---
 
@@ -18,212 +20,247 @@ The AI doesn't just follow a fixed script. It reads the state of your file, thin
 
 In Figma desktop:
 - Menu → Plugins → Development → Import plugin from manifest
-- Navigate to the `figma-plugin` folder inside `figlink` and select `manifest.json`
-
-This installs the Figlink plugin into Figma. You only do this once.
+- Navigate to the `figma-plugin/` folder and select `manifest.json`
 
 ### Step 2 — Add the figlink folder to your AI's IDE
 
-Open the `figlink` folder in your IDE (VS Code, Cursor, Windsurf, etc.) as a workspace or project folder.
-
-This is important — it gives the AI direct access to the Figlink system files so it can read, understand, and extend them as needed.
+Open the `figlink` folder in your IDE (VS Code, Cursor, Windsurf, etc.) as a workspace or project folder. This gives the AI direct access to the Figlink tools so it can run commands and extend the system as needed.
 
 ---
 
 ## Starting Figlink (every session)
 
-### On Windows
+### Windows
+Double-click `Start Figlink.bat`
 
-Double-click `Start Figlink.bat` inside the figlink folder.
-
-### On Mac
-
-Double-click `Start Figlink.command` inside the figlink folder.
+### Mac
+Double-click `Start Figlink.command`
 (If macOS asks, click Open to allow it.)
 
-### Or from the terminal
-
-Open a terminal, navigate into the figlink folder, and run:
+### Terminal
 ```bash
 node start.js
 ```
 
-This starts the link server and watches for any file changes — so if the AI edits the system, changes take effect automatically without needing a restart.
+This starts the link server and watches for file changes — if the AI edits the system, changes take effect automatically.
 
 ### Run the plugin in Figma
 
 Open Figma → Plugins → Development → Figlink → Run
 
-When the plugin shows a green dot and says "Connected", Figlink is live and ready.
+When the plugin shows a green dot and says **"Connected"**, Figlink is live. The sub-text shows the connected file name (e.g. `Design System · ready`).
 
 ---
 
 ## How to use it
 
-1. Start the link server (above)
-2. Open your Figma file and run the Figlink plugin
-3. In your IDE, open a chat with your AI assistant
-4. Tell the AI what you want done in Figma
+1. Start the link server
+2. Open your Figma file(s) and run the Figlink plugin in each
+3. Open a chat with your AI assistant
+4. Tell the AI what you want done
 
-The AI has access to the figlink folder, so it can read the available tools, run commands, and even write new capabilities directly into the system if what you're asking isn't supported yet.
-
-**Example prompts to get started:**
+**Example prompts:**
 - "Use Figlink to read the selected frame and tell me what layers are in it"
 - "Rename all the generic frame names in this selection to match their content"
 - "Apply spacing variables to the padding and gaps in this frame"
-- "Process this Figma frame and standardize the text styles and colors to match our design system"
-
-You don't need to know any code. Just describe what you want. The AI reads the docs, runs the right commands, and reports back what it did.
+- "Look at the design system in file A and apply its color variables to the frame at this link: [link]"
 
 ---
 
-## What the AI can do in Figma
+## What the AI can do
 
-Once connected, the AI can:
-
-- **Read** — Get node trees, text content, fills, styles, variables, and layout properties
-- **Rename** — Rename individual layers or bulk rename across a selection
-- **Text** — Set text content and link text nodes to text styles
+- **Read** — Node trees, text content, fills, styles, variables, layout properties
+- **Rename** — Single nodes or bulk rename across a selection
+- **Text** — Set text content, link text nodes to text styles
 - **Colors** — Apply color styles or bind fills to color variables
-- **Spacing & radius** — Bind padding, gaps, and corner radius to spacing/radius variables
-- **Raw properties** — Set any writable property directly (opacity, clip content, etc.)
+- **Spacing & radius** — Bind padding, gaps, and corner radius to variables
+- **Properties** — Set any writable property (opacity, clip content, etc.)
+- **Multi-file** — Read from one file and act on another in the same session
 
 ---
 
 ## Commands reference (for the AI)
 
-The AI uses `figma.js` to send commands. From inside the figlink folder:
+All tools live in `tools/`. Run from the codebase root:
 
 ```bash
-node figma.js <command> '<json-params>'
+node tools/figma.js [--file <fileKey|figmaUrl>] <command> [params-json]
 ```
 
-All output is JSON. Errors go to stderr and exit with code 1.
+Output is always JSON. Errors go to stderr with exit code 1.
+
+### Working with Figma links
+
+**`parse_link`** — Parse a Figma URL into fileKey + nodeId. Run this first on any link the user provides.
+```bash
+node tools/figma.js parse_link https://figma.com/design/abc123/Name?node-id=488-513
+# { "fileKey": "abc123", "nodeId": "488:513" }
+```
+
+**`list_connected_files`** — See all files with an active plugin connection.
+```bash
+node tools/figma.js list_connected_files
+# [{ "fileKey": "abc123", "name": "Design System" }, ...]
+```
+
+**`--file`** — Target a specific connected file. Accepts a file key or a full Figma URL.
+```bash
+node tools/figma.js --file abc123 get_local_styles
+node tools/figma.js --file https://figma.com/design/abc123/Name ping
+```
+Omit `--file` when only one file is connected.
+
+---
 
 ### Read
 
-**`ping`** — Check the connection.
+**`ping`** — Check connection.
 ```bash
-node figma.js ping
+node tools/figma.js ping
 ```
 
-**`get_selection`** — Get the currently selected nodes (depth 3).
+**`get_selection`** — Get currently selected nodes (depth 3).
 ```bash
-node figma.js get_selection
+node tools/figma.js get_selection
 ```
 
 **`get_nodes`** — Get a node tree by ID.
 ```bash
-node figma.js get_nodes '{"nodeId":"488:373","depth":3}'
+node tools/figma.js get_nodes '{"nodeId":"488:373","depth":3}'
 ```
 
 **`get_nodes_flat`** — Get all descendants as a flat array.
 ```bash
-node figma.js get_nodes_flat '{"nodeId":"488:373"}'
+node tools/figma.js get_nodes_flat '{"nodeId":"488:373"}'
 ```
 
 **`get_local_styles`** — Get all text and color styles in the file.
 ```bash
-node figma.js get_local_styles
+node tools/figma.js get_local_styles
 ```
 
 **`get_local_variables`** — Get variable collections defined locally.
 ```bash
-node figma.js get_local_variables
+node tools/figma.js get_local_variables
 ```
 
-**`get_all_document_variables`** — Get all variables bound anywhere in the document (including library variables).
+**`get_all_document_variables`** — Get all variables bound anywhere in the document, including library variables.
 ```bash
-node figma.js get_all_document_variables
+node tools/figma.js get_all_document_variables
 ```
 
 **`resolve_variables`** — Look up specific variables by ID.
 ```bash
-node figma.js resolve_variables '{"ids":["VariableID:abc/123"]}'
+node tools/figma.js resolve_variables '{"ids":["VariableID:abc/123"]}'
 ```
+
+**`get_page_frames`** — Get top-level frames on the current page.
+```bash
+node tools/figma.js get_page_frames
+```
+
+**`get_pages`** — Get all pages in the file.
+```bash
+node tools/figma.js get_pages
+```
+
+**`set_current_page`** — Switch the active page.
+```bash
+node tools/figma.js set_current_page '{"pageId":"0:2"}'
+```
+
+---
 
 ### Rename
 
 **`rename_node`** — Rename a single node.
 ```bash
-node figma.js rename_node '{"nodeId":"488:616","name":"container"}'
+node tools/figma.js rename_node '{"nodeId":"488:616","name":"container"}'
 ```
 
 **`bulk_rename`** — Rename multiple nodes.
 ```bash
-node figma.js bulk_rename '{"renames":[{"nodeId":"488:616","name":"container"},{"nodeId":"488:617","name":"label"}]}'
+node tools/figma.js bulk_rename '{"renames":[{"nodeId":"488:616","name":"container"},{"nodeId":"488:617","name":"label"}]}'
 ```
+
+---
 
 ### Text
 
 **`set_characters`** — Set text content on a text node.
 ```bash
-node figma.js set_characters '{"nodeId":"488:513","text":"Log in to your account"}'
+node tools/figma.js set_characters '{"nodeId":"488:513","text":"Log in to your account"}'
 ```
 
 **`bulk_set_characters`** — Set text on multiple nodes.
 ```bash
-node figma.js bulk_set_characters '{"items":[{"nodeId":"488:513","text":"Log in"},{"nodeId":"488:514","text":"Continue"}]}'
+node tools/figma.js bulk_set_characters '{"items":[{"nodeId":"488:513","text":"Log in"},{"nodeId":"488:514","text":"Continue"}]}'
 ```
 
 **`apply_text_style`** — Link a text node to a text style.
 ```bash
-node figma.js apply_text_style '{"nodeId":"488:513","styleId":"S:abc123"}'
+node tools/figma.js apply_text_style '{"nodeId":"488:513","styleId":"S:abc123"}'
 ```
 
 **`bulk_apply_text_style`** — Link multiple text nodes to text styles.
 ```bash
-node figma.js bulk_apply_text_style '{"items":[{"nodeId":"488:513","styleId":"S:abc"},{"nodeId":"488:514","styleId":"S:def"}]}'
+node tools/figma.js bulk_apply_text_style '{"items":[{"nodeId":"488:513","styleId":"S:abc"},{"nodeId":"488:514","styleId":"S:def"}]}'
 ```
+
+---
 
 ### Colors
 
 **`apply_fill_style`** — Apply a color style to a node's fill.
 ```bash
-node figma.js apply_fill_style '{"nodeId":"488:616","styleId":"S:abc123"}'
+node tools/figma.js apply_fill_style '{"nodeId":"488:616","styleId":"S:abc123"}'
 ```
 
 **`apply_fill_variable`** — Bind a fill to a color variable.
 ```bash
-node figma.js apply_fill_variable '{"nodeId":"488:616","variableId":"VariableID:abc/123","fillIndex":0}'
+node tools/figma.js apply_fill_variable '{"nodeId":"488:616","variableId":"VariableID:abc/123","fillIndex":0}'
 ```
 
 **`bulk_apply_fill_variable`** — Bind fills on multiple nodes.
 ```bash
-node figma.js bulk_apply_fill_variable '{"items":[{"nodeId":"488:616","variableId":"VariableID:abc/123","fillIndex":0}]}'
+node tools/figma.js bulk_apply_fill_variable '{"items":[{"nodeId":"488:616","variableId":"VariableID:abc/123","fillIndex":0}]}'
 ```
 
-### Variable bindings (spacing, radius, etc.)
+---
+
+### Variable bindings
 
 **`set_variable_binding`** — Bind a layout field to a variable.
 ```bash
-node figma.js set_variable_binding '{"nodeId":"488:616","field":"paddingTop","variableId":"VariableID:abc/123"}'
+node tools/figma.js set_variable_binding '{"nodeId":"488:616","field":"paddingTop","variableId":"VariableID:abc/123"}'
 ```
 
-Common fields: `paddingTop`, `paddingRight`, `paddingBottom`, `paddingLeft`, `itemSpacing`, `counterAxisSpacing`, `cornerRadius`, `topLeftRadius`, `topRightRadius`, `bottomRightRadius`, `bottomLeftRadius`
+Fields: `paddingTop`, `paddingRight`, `paddingBottom`, `paddingLeft`, `itemSpacing`, `counterAxisSpacing`, `cornerRadius`, `topLeftRadius`, `topRightRadius`, `bottomRightRadius`, `bottomLeftRadius`
 
 **`bulk_set_variable_binding`** — Bind multiple fields across multiple nodes.
 ```bash
-node figma.js bulk_set_variable_binding '{"items":[{"nodeId":"488:616","field":"paddingTop","variableId":"VariableID:abc/123"}]}'
+node tools/figma.js bulk_set_variable_binding '{"items":[{"nodeId":"488:616","field":"paddingTop","variableId":"VariableID:abc/123"}]}'
 ```
 
 **`remove_variable_binding`** — Unbind a variable from a field.
 ```bash
-node figma.js remove_variable_binding '{"nodeId":"488:616","field":"paddingTop"}'
+node tools/figma.js remove_variable_binding '{"nodeId":"488:616","field":"paddingTop"}'
 ```
+
+---
 
 ### Raw property
 
 **`set_property`** — Set any writable property directly.
 ```bash
-node figma.js set_property '{"nodeId":"488:616","field":"opacity","value":0.5}'
+node tools/figma.js set_property '{"nodeId":"488:616","field":"opacity","value":0.5}'
 ```
 
 ---
 
 ## For large bulk operations
 
-When passing large arrays of data, use inline Node.js to avoid shell escaping issues:
+Use inline Node.js to avoid shell escaping issues:
 
 ```bash
 node -e "
@@ -247,9 +284,19 @@ ws.on('open', () => {
 
 ---
 
-## Node data shape
+## Temp files
 
-`get_nodes` and `get_nodes_flat` return nodes like this:
+Any intermediate files (JSON output, debug data, etc.) must go in `temp/`:
+
+```bash
+node tools/figma.js get_local_variables > temp/variables.json
+```
+
+Run `node tools/process.js clean` to wipe the folder when done.
+
+---
+
+## Node data shape
 
 ```json
 {
@@ -257,7 +304,7 @@ ws.on('open', () => {
   "name": "container",
   "type": "FRAME",
   "fills": [{ "type": "SOLID", "color": { "r": 255, "g": 255, "b": 255 }, "colorVariableId": "VariableID:..." }],
-  "boundVariables": { "paddingTop": "VariableID:...", "fills": ["VariableID:..."] },
+  "boundVariables": { "paddingTop": "VariableID:..." },
   "paddingTop": 16, "paddingRight": 16, "paddingBottom": 16, "paddingLeft": 16,
   "itemSpacing": 8,
   "cornerRadius": 8,
@@ -274,16 +321,20 @@ TEXT nodes additionally include:
 }
 ```
 
-`colorVariableId` on a fill means it's already bound to a variable. `textStyleId` on a text node means it's already linked to a text style.
+`colorVariableId` on a fill means it's already bound. `textStyleId` on a text node means it's already linked.
 
 ---
 
 ## Troubleshooting
 
-**Plugin shows orange dot / "Connecting"** — The link server isn't running. Start it with `Start Figlink.bat` (Windows), `Start Figlink.command` (Mac), or `node start.js` from the figlink folder.
+**Orange dot / "Connecting"** — Link server isn't running. Start it with `Start Figlink.bat`, `Start Figlink.command`, or `node start.js`.
 
-**"Figma plugin not connected"** error — The plugin isn't running in Figma. Open Figma → Plugins → Development → Figlink → Run.
+**"Figma plugin not connected"** — Plugin isn't running. Open Figma → Plugins → Development → Figlink → Run.
 
-**"Timeout"** error — The link server is running but the plugin isn't open in Figma, or the plugin is open on a different file.
+**"Multiple files connected — specify --file"** — More than one Figma file has the plugin open. Add `--file <fileKey>` to your command.
 
-**Plugin says "Plugin code updated" banner** — The AI updated the plugin's source code. Close and re-open the plugin to load the new version. Shortcut: `⌘⌥P` on Mac, `Ctrl+Alt+P` on Windows.
+**"File X not connected"** — The file key from the link doesn't match any connected plugin. Open that file in Figma and run the plugin.
+
+**"Timeout"** — Server is running but plugin isn't open, or you're on the wrong file.
+
+**"Plugin code updated" banner** — AI updated `code.js`. Close and re-open the plugin. Shortcut: `⌘⌥P` (Mac) / `Ctrl+Alt+P` (Windows).

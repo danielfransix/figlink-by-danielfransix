@@ -3,6 +3,13 @@
 
 figma.showUI(__html__, { width: 500, height: 300, title: 'Figlink' });
 
+// Send file identity to UI so it can include it in the WebSocket registration
+figma.ui.postMessage({
+  type: 'file_info',
+  fileKey:  figma.fileKey  || figma.root.name,
+  fileName: figma.root.name,
+});
+
 figma.ui.onmessage = async (msg) => {
   // UI control messages (not Figma API commands)
   if (msg.type === 'resize') {
@@ -11,6 +18,10 @@ figma.ui.onmessage = async (msg) => {
   }
   if (msg.type === 'close_plugin') {
     figma.closePlugin();
+    return;
+  }
+  if (msg.type === 'open_url') {
+    figma.openExternal(msg.url);
     return;
   }
 
@@ -114,6 +125,18 @@ async function handleCommand(command, params) {
 
     case 'bulk_set_style_property':
       return bulkSetStyleProperty(params.items);
+
+    case 'set_style_variable_binding':
+      return await setStyleVariableBinding(params.styleId, params.field, params.variableId);
+
+    case 'bulk_set_style_variable_binding':
+      return await bulkSetStyleVariableBinding(params.items);
+
+    case 'delete_style':
+      return deleteStyle(params.styleId);
+
+    case 'bulk_delete_style':
+      return bulkDeleteStyle(params.styleIds);
 
     case 'duplicate_text_style':
       return duplicateTextStyle(params.styleId, params.newName, params.overrides || {});
@@ -579,6 +602,7 @@ async function duplicateTextStyle(styleId, newName, overrides) {
   if (!src) throw new Error(`Style ${styleId} not found`);
   if (src.type !== 'TEXT') throw new Error(`Style ${styleId} is not a text style`);
 
+  await figma.loadFontAsync({ family: 'Inter', style: 'Regular' });
   await figma.loadFontAsync(src.fontName);
 
   const s = figma.createTextStyle();
@@ -627,6 +651,49 @@ async function bulkSetStyleProperty(items) {
   for (const { styleId, field, value } of items) {
     try {
       results.push(await setStyleProperty(styleId, field, value));
+    } catch (e) {
+      results.push({ ok: false, styleId, field, error: e.message });
+    }
+  }
+  return results;
+}
+
+function deleteStyle(styleId) {
+  const style = figma.getStyleById(styleId);
+  if (!style) throw new Error(`Style ${styleId} not found`);
+  style.remove();
+  return { ok: true, styleId };
+}
+
+function bulkDeleteStyle(styleIds) {
+  const results = [];
+  for (const styleId of styleIds) {
+    try {
+      results.push(deleteStyle(styleId));
+    } catch (e) {
+      results.push({ ok: false, styleId, error: e.message });
+    }
+  }
+  return results;
+}
+
+async function setStyleVariableBinding(styleId, field, variableId) {
+  const style = figma.getStyleById(styleId);
+  if (!style) throw new Error(`Style ${styleId} not found`);
+  if (style.type === 'TEXT' && style.fontName) {
+    await figma.loadFontAsync(style.fontName);
+  }
+  const variable = figma.variables.getVariableById(variableId);
+  if (!variable) throw new Error(`Variable ${variableId} not found`);
+  style.setBoundVariable(field, variable);
+  return { ok: true, styleId, field, variableId };
+}
+
+async function bulkSetStyleVariableBinding(items) {
+  const results = [];
+  for (const { styleId, field, variableId } of items) {
+    try {
+      results.push(await setStyleVariableBinding(styleId, field, variableId));
     } catch (e) {
       results.push({ ok: false, styleId, field, error: e.message });
     }
