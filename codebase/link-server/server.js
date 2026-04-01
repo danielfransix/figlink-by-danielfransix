@@ -5,7 +5,21 @@ const PORT = 9001;
 const wss = new WebSocket.Server({ port: PORT });
 
 const plugins = new Map(); // fileKey → { ws, name }
-const pending = new Map(); // id → { sender: ws, fileKey }
+const pending = new Map(); // id → { sender: ws, fileKey, createdAt }
+
+// Purge pending entries that have been waiting longer than 30s (e.g. hung plugin)
+const PENDING_TTL_MS = 30000;
+setInterval(() => {
+  const now = Date.now();
+  for (const [id, entry] of pending) {
+    if (now - entry.createdAt > PENDING_TTL_MS) {
+      if (entry.sender.readyState === WebSocket.OPEN) {
+        entry.sender.send(JSON.stringify({ id, error: 'Request timed out — plugin did not respond in time.' }));
+      }
+      pending.delete(id);
+    }
+  }
+}, 10000);
 
 let activePrompt = null; // { id, content, path } — set via IPC from start.js
 
@@ -14,11 +28,14 @@ wss.on('connection', (ws) => {
 
   ws.on('message', (raw) => {
     let msg;
-    try { msg = JSON.parse(raw.toString()); } catch { return; }
+    try { msg = JSON.parse(raw.toString()); } catch {
+      console.warn(`[Figlink] Received unparseable message: ${raw.toString().slice(0, 120)}`);
+      return;
+    }
 
     // ── Plugin registration ───────────────────────────────────────────────────
     if (msg.type === 'register' && msg.role === 'plugin') {
-      const fileKey  = msg.fileKey  || `unnamed-${Date.now()}`;
+      const fileKey  = msg.fileKey  || `unnamed-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
       const fileName = msg.fileName || 'Unknown File';
       plugins.set(fileKey, { ws, name: fileName });
       ws._fileKey = fileKey;
@@ -30,9 +47,11 @@ wss.on('connection', (ws) => {
     // ── Plugin sending a result back → route to original client ──────────────
     if (ws._fileKey) {
       const entry = pending.get(msg.id);
-      if (entry && entry.sender.readyState === WebSocket.OPEN) {
-        pending.delete(msg.id);
-        entry.sender.send(raw.toString());
+      if (entry) {
+        pending.delete(msg.id); // Always clean up, even if the sender has since closed
+        if (entry.sender.readyState === WebSocket.OPEN) {
+          entry.sender.send(raw.toString());
+        }
       }
       return;
     }
@@ -41,7 +60,8 @@ wss.on('connection', (ws) => {
     if (!ws._promptSent) {
       ws._promptSent = true;
       if (activePrompt) {
-        ws.send(JSON.stringify({ type: 'active_prompt', id: activePrompt.id, content: activePrompt.content }));
+        const content = activePrompt.sendPrompt ? activePrompt.content : null;
+        ws.send(JSON.stringify({ type: 'active_prompt', id: activePrompt.id, content, sendPrompt: activePrompt.sendPrompt }));
       } else {
         ws.send(JSON.stringify({ type: 'active_prompt', id: null, content: null, warning: 'No prompt loaded — start server via node start.js' }));
       }
@@ -68,9 +88,13 @@ wss.on('connection', (ws) => {
       }
       let content = activePrompt.content;
       if (activePrompt.path) {
-        try { content = fs.readFileSync(activePrompt.path, 'utf8'); } catch (_) {}
+        try { content = fs.readFileSync(activePrompt.path, 'utf8'); } catch (e) {
+          console.warn(`[Figlink] Could not re-read prompt from disk, using cached version: ${e.message}`);
+        }
       }
-      ws.send(JSON.stringify({ id: msg.id, result: { id: activePrompt.id, content } }));
+      // Suppress content when send_prompt=false
+      const sendPrompt = activePrompt.sendPrompt;
+      ws.send(JSON.stringify({ id: msg.id, result: { id: activePrompt.id, content: sendPrompt ? content : null, sendPrompt } }));
       return;
     }
 
@@ -101,7 +125,7 @@ wss.on('connection', (ws) => {
     // Strip fileKey before forwarding to plugin — it doesn't need it
     const { fileKey: _fk, ...forwardMsg } = msg;
     const resolvedFileKey = msg.fileKey || [...plugins.keys()][0];
-    pending.set(msg.id, { sender: ws, fileKey: resolvedFileKey });
+    pending.set(msg.id, { sender: ws, fileKey: resolvedFileKey, createdAt: Date.now() });
     targetEntry.ws.send(JSON.stringify(forwardMsg));
   });
 
@@ -140,7 +164,7 @@ wss.on('error', (err) => {
 // IPC from start.js
 process.on('message', (msg) => {
   if (msg && msg.type === 'set_prompt') {
-    activePrompt = { id: msg.id, content: msg.content, path: msg.path };
+    activePrompt = { id: msg.id, content: msg.content, path: msg.path, sendPrompt: msg.sendPrompt !== false };
   }
   if (msg && msg.type === 'code_changed') {
     let notified = 0;

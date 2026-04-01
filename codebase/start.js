@@ -94,6 +94,14 @@ function loadActivePrompt() {
     process.exit(1);
   }
 
+  // Parse send_prompt=true/false (optional — defaults to true)
+  const sendPromptLine = raw.split('\n').map(l => l.trim()).find(l => l.startsWith('send_prompt'));
+  let sendPrompt = true;
+  if (sendPromptLine) {
+    const m = sendPromptLine.match(/^send_prompt\s*=\s*(true|false)/);
+    if (m) sendPrompt = m[1] === 'true';
+  }
+
   const promptPath = path.join(PROMPT_FILES_DIR, `${rawId}.md`);
 
   let stat;
@@ -131,7 +139,7 @@ function loadActivePrompt() {
     console.log(`${Y}  ⚠  Active prompt "${rawId}" is large (${kb}kb) — consider splitting instructions.${R}`);
   }
 
-  return { id: rawId, content, path: promptPath };
+  return { id: rawId, content, path: promptPath, sendPrompt };
 }
 
 // ─── Dependency check ─────────────────────────────────────────────────────────
@@ -196,7 +204,7 @@ function startServer() {
   serverProcess.once('message', (ipcMsg) => {
     if (ipcMsg && ipcMsg.type === 'ready' && activePrompt) {
       try {
-        serverProcess.send({ type: 'set_prompt', id: activePrompt.id, content: activePrompt.content, path: activePrompt.path });
+        serverProcess.send({ type: 'set_prompt', id: activePrompt.id, content: activePrompt.content, path: activePrompt.path, sendPrompt: activePrompt.sendPrompt });
       } catch (e) {
         console.error('  [Figlink] Failed to send prompt to server:', e.message);
       }
@@ -308,7 +316,7 @@ printBanner();
 checkMacLauncher();
 ensureDeps();
 activePrompt = loadActivePrompt();
-log('purple', `  Active prompt: ${activePrompt.id}\n`);
+log('purple', `  Active prompt: ${activePrompt.id}  ·  send_prompt=${activePrompt.sendPrompt}\n`);
 log('purple', '  Starting link server…\n');
 startServer();
 watchFiles();

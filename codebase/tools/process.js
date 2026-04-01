@@ -8,8 +8,14 @@ const { execSync } = require('child_process');
 
 const TEMP_DIR = path.join(__dirname, '..', 'temp');
 
-// Configuration
-const WS_URL = 'ws://localhost:9001';
+// ─── Configuration constants ──────────────────────────────────────────────────
+const WS_URL                 = 'ws://localhost:9001';
+const BULK_BINDING_CHUNK     = 500;   // Max items per bulk_set_variable_binding call
+const STANDARDIZE_TIMEOUT_MS = 300000; // 5 min per frame
+const PAGE_CONCURRENCY       = 3;     // Max pages processed in parallel
+// Match quality thresholds — skip binding if the closest match is too far off
+const COLOR_MAX_DIST         = 30;    // Max RGB Manhattan distance (0–765) to bind a color
+const FLOAT_MAX_DIFF         = 2;     // Max pixel difference to bind a spacing/radius value
 
 // ─── Figma URL parser (mirrors figma.js) ─────────────────────────────────────
 
@@ -100,7 +106,7 @@ module.exports = { sendCommand };
 
 async function fetchDocumentData() {
     console.log('Fetching document variables and styles (including libraries)...');
-    const variables = await sendCommand('get_all_available_variables', {}, 300000);
+    const variables = await sendCommand('get_all_available_variables', {}, STANDARDIZE_TIMEOUT_MS);
     const styles = await sendCommand('get_local_styles', {});
     return { variables, styles };
 }
@@ -128,7 +134,7 @@ function findClosestColor(r, g, b, colorVars) {
                    + Math.abs(Math.round(c.b * 255) - b);
         if (diff < minDiff) { minDiff = diff; closest = v; }
     }
-    return closest;
+    return minDiff <= COLOR_MAX_DIST ? closest : null;
 }
 
 function findClosestFloat(val, type, floatVars) {
@@ -141,7 +147,7 @@ function findClosestFloat(val, type, floatVars) {
         if (diff < minDiff) { minDiff = diff; closest = c; }
     }
     if (val === 0 && closest && closest.val !== 0) return null;
-    return closest;
+    return minDiff <= FLOAT_MAX_DIFF ? closest : null;
 }
 
 function findClosestTextStyle(fontSize, fontWeight, fontFamily, textStyles) {
@@ -185,7 +191,11 @@ async function processStandardization(nodeId, prefetched = null) {
         const nodes = await fetchNodes(nodeId);
 
         const colorVars  = variables.filter(v => v.resolvedType === 'COLOR');
-        const floatVars  = variables.filter(v => v.resolvedType === 'FLOAT').map(v => ({ ...v, val: Object.values(v.valuesByMode)[0] }));
+        const floatVars  = variables.filter(v => v.resolvedType === 'FLOAT').reduce((acc, v) => {
+            const val = Object.values(v.valuesByMode)[0];
+            if (val !== undefined) acc.push({ ...v, val });
+            return acc;
+        }, []);
         const textStyles = styles.textStyles || [];
 
         const renameItems    = [];
@@ -260,11 +270,10 @@ async function processStandardization(nodeId, prefetched = null) {
         if (textStyleItems.length) await sendCommand('bulk_apply_text_style', { items: textStyleItems });
         if (colorItems.length)     await sendCommand('bulk_apply_fill_variable', { items: colorItems });
 
-        const CHUNK = 500;
-        for (let i = 0; i < bindingItems.length; i += CHUNK)
-            await sendCommand('bulk_set_variable_binding', { items: bindingItems.slice(i, i + CHUNK) });
-        for (let i = 0; i < propertyItems.length; i += CHUNK)
-            await sendCommand('bulk_set_property', { items: propertyItems.slice(i, i + CHUNK) });
+        for (let i = 0; i < bindingItems.length; i += BULK_BINDING_CHUNK)
+            await sendCommand('bulk_set_variable_binding', { items: bindingItems.slice(i, i + BULK_BINDING_CHUNK) });
+        for (let i = 0; i < propertyItems.length; i += BULK_BINDING_CHUNK)
+            await sendCommand('bulk_set_property', { items: propertyItems.slice(i, i + BULK_BINDING_CHUNK) });
 
         console.log('Done.');
     } catch (err) {
@@ -277,10 +286,15 @@ async function standardizePage(prefetched = null) {
     const frames = await sendCommand('get_page_frames', {});
     const targets = frames.filter(n => ['FRAME', 'COMPONENT', 'COMPONENT_SET', 'SECTION'].includes(n.type));
     console.log(`  Found ${targets.length} top-level frames.`);
-    for (let i = 0; i < targets.length; i++) {
-        const { id, name } = targets[i];
-        console.log(`  [${i + 1}/${targets.length}] ${name} (${id})`);
-        await processStandardization(id, data);
+
+    for (let i = 0; i < targets.length; i += PAGE_CONCURRENCY) {
+        const batch = targets.slice(i, i + PAGE_CONCURRENCY);
+        await Promise.all(batch.map(({ id, name }, j) => {
+            console.log(`  [${i + j + 1}/${targets.length}] ${name} (${id})`);
+            return processStandardization(id, data).catch(e => {
+                console.error(`  ✗ ${name}: ${e.message}`);
+            });
+        }));
     }
 }
 
@@ -304,7 +318,10 @@ async function standardizeFile() {
 async function printActivePrompt() {
   try {
     const result = await sendCommand('get_active_prompt', {}, 5000);
-    if (result && result.content) {
+    if (!result) return;
+    if (result.sendPrompt === false) {
+      process.stdout.write(`\n[Figlink] Active prompt: ${result.id} (send_prompt=false — content suppressed)\n\n`);
+    } else if (result.content) {
       process.stdout.write(`\n--- Active Prompt: ${result.id} ---\n${result.content}\n--- End Prompt ---\n\n`);
     }
   } catch (_) {
@@ -345,7 +362,7 @@ if (cmd === 'standardize') {
         let cleaned = 0;
         for (const f of fs.readdirSync(TEMP_DIR)) {
             if (f === '.gitignore') continue;
-            fs.unlinkSync(path.join(TEMP_DIR, f));
+            fs.rmSync(path.join(TEMP_DIR, f), { force: true });
             cleaned++;
         }
         console.log(`Cleaned ${cleaned} files from temp/.`);

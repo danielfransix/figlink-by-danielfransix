@@ -155,6 +155,28 @@ async function handleCommand(command, params) {
   }
 }
 
+// ─── Constants ───────────────────────────────────────────────────────────────
+
+// Whitelist of node fields that setProperty / bulkSetProperty may write
+const SETTABLE_PROPERTIES = new Set([
+  'name', 'visible', 'opacity', 'blendMode',
+  'clipsContent', 'layoutMode', 'primaryAxisSizingMode', 'counterAxisSizingMode',
+  'paddingLeft', 'paddingRight', 'paddingTop', 'paddingBottom',
+  'itemSpacing', 'counterAxisSpacing',
+  'cornerRadius', 'topLeftRadius', 'topRightRadius', 'bottomLeftRadius', 'bottomRightRadius',
+  'constraints', 'layoutAlign', 'layoutGrow',
+]);
+
+// Font loading cache — avoids redundant figma.loadFontAsync calls within a session
+const _loadedFonts = new Set();
+async function ensureFontLoaded(fontName) {
+  const key = `${fontName.family}:${fontName.style}`;
+  if (!_loadedFonts.has(key)) {
+    await figma.loadFontAsync(fontName);
+    _loadedFonts.add(key);
+  }
+}
+
 // ─── Serialization ───────────────────────────────────────────────────────────
 
 function isMixed(value) {
@@ -219,7 +241,7 @@ function serializeNode(node, depth) {
            base.styleFontFamily = s.fontName ? s.fontName.family : null;
            base.styleFontWeight = s.fontName ? s.fontName.style : null;
         }
-      } catch (_) {}
+      } catch (e) { console.warn(`[Figlink] Could not resolve text style ${base.textStyleId}: ${e.message}`); }
     }
     base.fills = serializeFills(node.fills);
     const bv = serializeBoundVariables(node);
@@ -270,7 +292,7 @@ function serializeNode(node, depth) {
 function getNodes({ nodeId, depth = 3 }) {
   const root = nodeId ? figma.getNodeById(nodeId) : figma.currentPage;
   if (!root) throw new Error(`Node ${nodeId} not found`);
-  return serializeNode(root, depth);
+  return serializeNode(root, Math.max(0, depth));
 }
 
 function getNodesFlat({ nodeId, skipVectors = true, skipInstanceChildren = true }) {
@@ -402,10 +424,10 @@ async function getAllAvailableVariables() {
             collectionId: imported.variableCollectionId,
             valuesByMode: imported.valuesByMode,
           });
-        } catch (_) {}
+        } catch (e) { console.warn(`[Figlink] Could not import variable "${libVar.name}" (${libVar.key}): ${e.message}`); }
       }
     }
-  } catch (_) {}
+  } catch (e) { console.warn(`[Figlink] Could not fetch team library variable collections: ${e.message}`); }
 
   // Merge: local first, then library (deduplicate by id)
   const seen = new Set(local.map(v => v.id));
@@ -431,7 +453,7 @@ async function applyTextStyle(nodeId, styleId) {
   const fontName = isMixed(node.fontName)
     ? { family: 'Inter', style: 'Regular' }
     : node.fontName;
-  await figma.loadFontAsync(fontName);
+  await ensureFontLoaded(fontName);
 
   node.textStyleId = styleId;
   return { ok: true, nodeId, styleId, styleName: style.name };
@@ -466,6 +488,10 @@ function applyFillVariable(nodeId, variableId, fillIndex) {
 
   const fills = structuredClone(node.fills);
   if (!fills.length) fills.push({ type: 'SOLID', color: { r: 0, g: 0, b: 0 } });
+
+  if (fillIndex < 0 || fillIndex >= fills.length) {
+    throw new Error(`fillIndex ${fillIndex} is out of bounds (node has ${fills.length} fill(s))`);
+  }
 
   fills[fillIndex] = figma.variables.setBoundVariableForPaint(fills[fillIndex], 'color', variable);
   node.fills = fills;
@@ -516,6 +542,8 @@ function removeVariableBinding(nodeId, field) {
 }
 
 function setProperty(nodeId, field, value) {
+  if (!SETTABLE_PROPERTIES.has(field))
+    throw new Error(`Property "${field}" is not in the allowed list`);
   const node = figma.getNodeById(nodeId);
   if (!node) throw new Error(`Node ${nodeId} not found`);
   node[field] = value;
@@ -569,7 +597,7 @@ function getAllDocumentVariables() {
     try {
       const v = figma.variables.getVariableById(id);
       if (v) resolved.push({ id, name: v.name, resolvedType: v.resolvedType, collectionId: v.variableCollectionId, valuesByMode: v.valuesByMode });
-    } catch (_) {}
+    } catch (e) { console.warn(`[Figlink] Could not resolve variable ${id}: ${e.message}`); }
   });
   return resolved;
 }
@@ -579,7 +607,7 @@ async function setCharacters(nodeId, text) {
   if (!node) throw new Error(`Node ${nodeId} not found`);
   if (node.type !== 'TEXT') throw new Error(`Node ${nodeId} is not a TEXT node`);
   const fontName = isMixed(node.fontName) ? { family: 'Inter', style: 'Regular' } : node.fontName;
-  await figma.loadFontAsync(fontName);
+  await ensureFontLoaded(fontName);
   const oldText = node.characters;
   node.characters = text;
   return { ok: true, nodeId, oldText, newText: text };
@@ -602,8 +630,8 @@ async function duplicateTextStyle(styleId, newName, overrides) {
   if (!src) throw new Error(`Style ${styleId} not found`);
   if (src.type !== 'TEXT') throw new Error(`Style ${styleId} is not a text style`);
 
-  await figma.loadFontAsync({ family: 'Inter', style: 'Regular' });
-  await figma.loadFontAsync(src.fontName);
+  await ensureFontLoaded({ family: 'Inter', style: 'Regular' });
+  await ensureFontLoaded(src.fontName);
 
   const s = figma.createTextStyle();
   s.name = newName;
@@ -879,7 +907,7 @@ async function swapButtonInstances(containerId, newComponentSetId) {
           const newTextNode = instance.findOne(n => n.type === 'TEXT');
           if (newTextNode) {
               const fontName = isMixed(newTextNode.fontName) ? { family: 'Inter', style: 'Regular' } : newTextNode.fontName;
-              await figma.loadFontAsync(fontName);
+              await ensureFontLoaded(fontName);
               newTextNode.characters = oldText;
           }
       }

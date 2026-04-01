@@ -305,6 +305,7 @@
 
     let ws = null;
     let retryTimer = null;
+    let retryAttempt = 0;
     let pendingMessages = [];
     let fileInfo = null; // { fileKey, fileName } — received from code.js on load
 
@@ -360,6 +361,7 @@
       ws = new WebSocket(LINK_URL);
 
       ws.onopen = () => {
+        retryAttempt = 0; // Reset backoff on successful connection
         ws.send(JSON.stringify({ type: 'register', role: 'plugin', ...(fileInfo || {}) }));
         pendingMessages.forEach(msg => ws.send(JSON.stringify(msg)));
         pendingMessages = [];
@@ -395,7 +397,10 @@
           showHint();
         }
         clearTimeout(retryTimer);
-        retryTimer = setTimeout(connect, 2500);
+        // Exponential backoff with jitter: 2.5s, 5s, 10s, 20s, 30s max
+        const delay = Math.min(30000, 2500 * Math.pow(2, retryAttempt)) + Math.floor(Math.random() * 500);
+        retryAttempt++;
+        retryTimer = setTimeout(connect, delay);
       };
     }
 
@@ -416,7 +421,10 @@
       if (ws && ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify(msg));
       } else {
-        if (pendingMessages.length >= 10) pendingMessages.shift();
+        if (pendingMessages.length >= 10) {
+          pendingMessages.shift();
+          setState('connecting', 'Reconnecting…', 'Buffer full — some messages may be lost');
+        }
         pendingMessages.push(msg);
       }
     };
