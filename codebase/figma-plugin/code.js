@@ -150,6 +150,21 @@ async function handleCommand(command, params) {
     case 'swap_button_instances':
       return swapButtonInstances(params.containerId, params.newComponentSetId);
 
+    case 'create_node':
+      return await createNode(params);
+
+    case 'create_node_tree':
+      return await createNodeTree(params);
+
+    case 'set_node_raw':
+      return await setNodeRaw(params);
+
+    case 'delete_node':
+      return deleteNode(params.nodeId);
+
+    case 'group_as_component_set':
+      return groupAsComponentSet(params.nodeIds, params.name, params.parentId);
+
     default:
       throw new Error(`Unknown command: ${command}`);
   }
@@ -922,4 +937,152 @@ async function swapButtonInstances(containerId, newComponentSetId) {
   }
 
   return results;
+}
+
+// ─── Node Creation ────────────────────────────────────────────────────────────
+
+function makeFill(f) {
+  if (f.type === 'SOLID') {
+    const fill = { type: 'SOLID', color: { r: f.r / 255, g: f.g / 255, b: f.b / 255 } };
+    if (f.opacity !== undefined) fill.opacity = f.opacity;
+    return fill;
+  }
+  return f;
+}
+
+function makeStroke(s) {
+  if (s.type === 'SOLID') {
+    const stroke = { type: 'SOLID', color: { r: s.r / 255, g: s.g / 255, b: s.b / 255 } };
+    if (s.opacity !== undefined) stroke.opacity = s.opacity;
+    return stroke;
+  }
+  return s;
+}
+
+async function applyNodeProps(node, props) {
+  // Load font before any text operations
+  if (node.type === 'TEXT') {
+    const fn = props.fontName || { family: 'Inter', style: 'Regular' };
+    await ensureFontLoaded(fn);
+    node.fontName = fn;
+  }
+
+  const SKIP = new Set(['type', 'children', 'fontName']);
+
+  for (const [key, value] of Object.entries(props)) {
+    if (SKIP.has(key)) continue;
+    try {
+      if (key === 'fills') {
+        node.fills = value.map(makeFill);
+      } else if (key === 'strokes') {
+        node.strokes = value.map(makeStroke);
+      } else if (key === 'characters') {
+        const fn = isMixed(node.fontName) ? { family: 'Inter', style: 'Regular' } : node.fontName;
+        await ensureFontLoaded(fn);
+        node.characters = value;
+      } else if (key === 'effects') {
+        node.effects = value;
+      } else if (key === 'strokeWeight') {
+        node.strokeWeight = value;
+      } else if (key === 'strokeAlign') {
+        node.strokeAlign = value;
+      } else if (key === 'x' || key === 'y') {
+        node[key] = value;
+      } else if (key === 'width' || key === 'height') {
+        if ('resize' in node) {
+          const w = key === 'width' ? value : node.width;
+          const h = key === 'height' ? value : node.height;
+          node.resize(w, h);
+        }
+      } else if (key in node) {
+        node[key] = value;
+      }
+    } catch (e) {
+      console.warn(`[Figlink] applyNodeProps: could not set "${key}": ${e.message}`);
+    }
+  }
+
+  // Apply width/height together to lock in final size
+  if ('width' in props && 'height' in props && 'resize' in node) {
+    try { node.resize(props.width, props.height); } catch (e) {}
+  }
+}
+
+function instantiateNode(type) {
+  switch (type) {
+    case 'FRAME':     return figma.createFrame();
+    case 'COMPONENT': return figma.createComponent();
+    case 'RECTANGLE': return figma.createRectangle();
+    case 'ELLIPSE':   return figma.createEllipse();
+    case 'LINE':      return figma.createLine();
+    case 'TEXT':      return figma.createText();
+    case 'VECTOR':    return figma.createVector();
+    default: throw new Error(`Unsupported node type: ${type}`);
+  }
+}
+
+async function createNode({ type, parentId, props = {} }) {
+  const parent = parentId ? figma.getNodeById(parentId) : figma.currentPage;
+  if (!parent) throw new Error(`Parent ${parentId} not found`);
+  const node = instantiateNode(type);
+  if ('appendChild' in parent) parent.appendChild(node);
+  await applyNodeProps(node, props);
+  return { id: node.id, name: node.name, type: node.type };
+}
+
+async function setNodeRaw({ nodeId, props = {} }) {
+  const node = figma.getNodeById(nodeId);
+  if (!node) throw new Error(`Node ${nodeId} not found`);
+  await applyNodeProps(node, props);
+  return { ok: true, nodeId };
+}
+
+async function createNodeTree({ tree, parentId }) {
+  const parent = parentId ? figma.getNodeById(parentId) : figma.currentPage;
+  if (!parent) throw new Error(`Parent ${parentId} not found`);
+
+  const idMap = {}; // name → id
+
+  async function build(def, parentNode) {
+    const type = def.type;
+    const children = def.children || [];
+    const props = {};
+    for (const k in def) {
+      if (k !== 'type' && k !== 'children') props[k] = def[k];
+    }
+    const node = instantiateNode(type);
+    if ('appendChild' in parentNode) parentNode.appendChild(node);
+    await applyNodeProps(node, props);
+    if (props.name) idMap[props.name] = node.id;
+    for (const child of children) {
+      await build(child, node);
+    }
+    return node;
+  }
+
+  const defs = Array.isArray(tree) ? tree : [tree];
+  for (const def of defs) {
+    await build(def, parent);
+  }
+
+  return idMap;
+}
+
+function deleteNode(nodeId) {
+  const node = figma.getNodeById(nodeId);
+  if (!node) throw new Error(`Node ${nodeId} not found`);
+  node.remove();
+  return { ok: true, nodeId };
+}
+
+function groupAsComponentSet(nodeIds, name, parentId) {
+  const nodes = nodeIds.map(id => {
+    const n = figma.getNodeById(id);
+    if (!n) throw new Error(`Node ${id} not found`);
+    if (n.type !== 'COMPONENT') throw new Error(`Node ${id} is not a COMPONENT (got ${n.type})`);
+    return n;
+  });
+  const set = figma.combineAsVariants(nodes, parentId ? figma.getNodeById(parentId) : figma.currentPage);
+  set.name = name;
+  return { ok: true, id: set.id, name: set.name };
 }

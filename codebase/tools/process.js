@@ -313,30 +313,14 @@ async function standardizeFile() {
     console.log('\nEntire file processed.');
 }
 
-// ─── Active prompt printer ────────────────────────────────────────────────────
+// ─── CLI entry (only runs when executed directly, not when require()'d) ────────
 
-async function printActivePrompt() {
-  try {
-    const result = await sendCommand('get_active_prompt', {}, 5000);
-    if (!result) return;
-    if (result.sendPrompt === false) {
-      process.stdout.write(`\n[Figlink] Active prompt: ${result.id} (send_prompt=false — content suppressed)\n\n`);
-    } else if (result.content) {
-      process.stdout.write(`\n--- Active Prompt: ${result.id} ---\n${result.content}\n--- End Prompt ---\n\n`);
-    }
-  } catch (_) {
-    // Non-fatal: prompt unavailable, continue without it
-    process.stderr.write('[Figlink] Warning: Could not load active prompt. Start server via node start.js.\n\n');
-  }
-}
+if (require.main === module) {
+    const cmd      = process.argv[2];
+    const targetId = process.argv[3];
 
-// ─── CLI entry ────────────────────────────────────────────────────────────────
-
-const cmd      = process.argv[2];
-const targetId = process.argv[3];
-
-if (!cmd) {
-    console.log(`
+    if (!cmd) {
+        console.log(`
 Usage: node tools/process.js [--file <fileKey|figmaUrl>] <command> [nodeId]
 
 Commands:
@@ -345,28 +329,29 @@ Commands:
   standardize-file       Run standardization on every page and frame in the file
   clean                  Delete all files from the temp/ folder
 `);
-    process.exit(0);
-}
-
-if (cmd === 'standardize') {
-    if (!targetId) { console.error('Error: provide a nodeId'); process.exit(1); }
-    printActivePrompt().then(() => processStandardization(targetId)).catch(err => { console.error(err.message); process.exit(1); });
-} else if (cmd === 'standardize-page') {
-    printActivePrompt().then(() => standardizePage()).catch(err => { console.error(err.message); process.exit(1); });
-} else if (cmd === 'standardize-file') {
-    printActivePrompt().then(() => standardizeFile()).catch(err => { console.error(err.message); process.exit(1); });
-} else if (cmd === 'clean') {
-    if (!fs.existsSync(TEMP_DIR)) {
-        console.log('Temp folder is empty — nothing to clean.');
-    } else {
-        let cleaned = 0;
-        for (const f of fs.readdirSync(TEMP_DIR)) {
-            if (f === '.gitignore') continue;
-            fs.rmSync(path.join(TEMP_DIR, f), { force: true });
-            cleaned++;
-        }
-        console.log(`Cleaned ${cleaned} files from temp/.`);
+        process.exit(0);
     }
-} else {
-    console.error(`Unknown command: ${cmd}`);
+
+    if (cmd === 'standardize') {
+        if (!targetId) { console.error('Error: provide a nodeId'); process.exit(1); }
+        processStandardization(targetId).catch(err => { console.error(err.message); process.exit(1); });
+    } else if (cmd === 'standardize-page') {
+        standardizePage().catch(err => { console.error(err.message); process.exit(1); });
+    } else if (cmd === 'standardize-file') {
+        standardizeFile().catch(err => { console.error(err.message); process.exit(1); });
+    } else if (cmd === 'clean') {
+        if (!fs.existsSync(TEMP_DIR)) {
+            console.log('Temp folder is empty — nothing to clean.');
+        } else {
+            let cleaned = 0;
+            for (const f of fs.readdirSync(TEMP_DIR)) {
+                if (f === '.gitignore') continue;
+                fs.rmSync(path.join(TEMP_DIR, f), { force: true });
+                cleaned++;
+            }
+            console.log(`Cleaned ${cleaned} files from temp/.`);
+        }
+    } else {
+        console.error(`Unknown command: ${cmd}`);
+    }
 }

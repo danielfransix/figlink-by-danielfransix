@@ -232,6 +232,8 @@ node tools/process.js clean
 - If `result.sendPrompt === false`: prints a one-line notice `[Figlink] Active prompt: <id> (send_prompt=false — content suppressed)` without revealing the content.
 - If `sendPrompt === true` and content is present: prints the full prompt block.
 
+**Module vs CLI:** The file wraps its CLI dispatch block in `if (require.main === module)`, so external scripts can safely `require('./tools/process.js')` to import `sendCommand` without triggering the CLI logic. This is the correct pattern for any new tool scripts added under `tools/`.
+
 **`standardize <nodeId>`:**
 1. Fetches all `COLOR` and `FLOAT` variables (including team library imports) and local text styles.
    - `floatVars` construction guards against empty `valuesByMode` — variables without any mode values are silently skipped.
@@ -275,6 +277,10 @@ send_prompt=true
   - The AI receives no prompt content.
 
 **Prompt files:** Markdown files in `prompts/prompt-files/<id>.md`. These are workflow instructions the AI follows. They can be changed on disk while the server is running — `get_active_prompt` re-reads from disk on every call so the AI always sees the latest version without a server restart.
+
+**Prompt file content rule:** Prompt files must be **generic, reusable workflow guides** — they describe *how* to approach a class of task, not *what* to do for a specific task. They must never contain task-specific data such as URLs, file keys, hex values scraped from a particular site, or target node IDs.
+
+**Task-specific data belongs in `temp/`:** Extracted design tokens, build plans, site-specific specs, and intermediate scripts for a particular job should be written to `temp/<task-name>-*.md` (or `.js`, `.json`). The `temp/` folder is gitignored and is cleaned with `node tools/process.js clean`.
 
 ---
 

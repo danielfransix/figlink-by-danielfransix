@@ -1,5 +1,6 @@
 const WebSocket = require('ws');
 const fs = require('fs');
+const path = require('path');
 
 const PORT = 9001;
 const wss = new WebSocket.Server({ port: PORT });
@@ -21,7 +22,7 @@ setInterval(() => {
   }
 }, 10000);
 
-let activePrompt = null; // { id, content, path } — set via IPC from start.js
+const SYSTEM_PROMPT_PATH = path.join(__dirname, '..', 'prompts', 'system.md');
 
 wss.on('connection', (ws) => {
   ws._promptSent = false;
@@ -56,14 +57,14 @@ wss.on('connection', (ws) => {
       return;
     }
 
-    // ── CLI client: auto-inject active prompt on first command ────────────────
+    // ── CLI client: inject system prompt on first command ─────────────────────
     if (!ws._promptSent) {
       ws._promptSent = true;
-      if (activePrompt) {
-        const content = activePrompt.sendPrompt ? activePrompt.content : null;
-        ws.send(JSON.stringify({ type: 'active_prompt', id: activePrompt.id, content, sendPrompt: activePrompt.sendPrompt }));
-      } else {
-        ws.send(JSON.stringify({ type: 'active_prompt', id: null, content: null, warning: 'No prompt loaded — start server via node start.js' }));
+      try {
+        const content = fs.readFileSync(SYSTEM_PROMPT_PATH, 'utf8');
+        ws.send(JSON.stringify({ type: 'active_prompt', id: 'system', content }));
+      } catch (_) {
+        // system.md not found — skip injection silently
       }
     }
 
@@ -77,24 +78,6 @@ wss.on('connection', (ws) => {
     if (msg.command === 'list_connected_files') {
       const files = [...plugins.entries()].map(([fileKey, { name }]) => ({ fileKey, name }));
       ws.send(JSON.stringify({ id: msg.id, result: files }));
-      return;
-    }
-
-    // get_active_prompt is answered directly by the server (re-reads from disk)
-    if (msg.command === 'get_active_prompt') {
-      if (!activePrompt) {
-        ws.send(JSON.stringify({ id: msg.id, error: 'No prompt loaded. Start the server via node start.js.' }));
-        return;
-      }
-      let content = activePrompt.content;
-      if (activePrompt.path) {
-        try { content = fs.readFileSync(activePrompt.path, 'utf8'); } catch (e) {
-          console.warn(`[Figlink] Could not re-read prompt from disk, using cached version: ${e.message}`);
-        }
-      }
-      // Suppress content when send_prompt=false
-      const sendPrompt = activePrompt.sendPrompt;
-      ws.send(JSON.stringify({ id: msg.id, result: { id: activePrompt.id, content: sendPrompt ? content : null, sendPrompt } }));
       return;
     }
 
@@ -150,7 +133,6 @@ wss.on('connection', (ws) => {
 
 wss.on('listening', () => {
   console.log(`[Figlink] Listening on ws://localhost:${PORT}`);
-  // Signal to start.js that the server is ready to receive the active prompt
   if (process.send) process.send({ type: 'ready' });
 });
 
@@ -163,9 +145,6 @@ wss.on('error', (err) => {
 
 // IPC from start.js
 process.on('message', (msg) => {
-  if (msg && msg.type === 'set_prompt') {
-    activePrompt = { id: msg.id, content: msg.content, path: msg.path, sendPrompt: msg.sendPrompt !== false };
-  }
   if (msg && msg.type === 'code_changed') {
     let notified = 0;
     for (const { ws } of plugins.values()) {
