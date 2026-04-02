@@ -72,7 +72,7 @@ function printBanner() {
 // We treat silence for > CONN_TTL ms as a disconnect.
 
 const connectedFiles = new Map(); // fileKey → { fileName, lastSeen }
-const CONN_TTL       = 8000;     // ms without a ping → considered disconnected
+const CONN_TTL       = 180000;    // ms without a ping → considered disconnected
 
 function touchFile(fileKey, fileName) {
   const now      = Date.now();
@@ -282,6 +282,8 @@ const MAX_BODY = 1024 * 1024; // 1 MB — guard against runaway payloads
 
 const server = http.createServer((req, res) => {
   cors(res);
+  req.setTimeout(600000); // 10 minutes timeout for AI processing
+  res.setTimeout(600000);
 
   if (req.method === 'OPTIONS') {
     res.writeHead(204); res.end(); return;

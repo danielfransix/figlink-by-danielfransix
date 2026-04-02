@@ -354,6 +354,8 @@ async function captureWidth(ws, width) {
 // widths: number[]  e.g. [1440, 768, 390]
 // Returns { ok, title, url, captures: [ { width, height, tree }, ... ] }
 
+const { callKimiAI } = require('./ai.js');
+
 async function capture(targetUrl, widths = [1440]) {
   // Deduplicate and sort largest → smallest
   const sortedWidths = [...new Set(widths.map(Number).filter(w => w >= 320 && w <= 3840))]
@@ -397,8 +399,34 @@ async function capture(targetUrl, widths = [1440]) {
     const captures = [];
     for (const width of sortedWidths) {
       console.log(`  [cdp] Capturing width ${width}px…`);
-      const result = await captureWidth(ws, width);
-      captures.push(result);
+      
+      // 1. Run the original walker to get the structural JSON map
+      const jsonStr = await evaluate(ws, WALKER_SCRIPT);
+      if (typeof jsonStr !== 'string') throw new Error('Walker returned no value');
+      const result = JSON.parse(jsonStr);
+      if (!result.ok) throw new Error(`Walker error: ${result.error}`);
+
+      // 2. Pass the JSON map to Kimi to generate clean HTML/CSS
+      console.log(`  [cdp] Sending structural JSON to Kimi AI...`);
+      const aiPrompt = `Here is the structural JSON map of the site. Please output a clean vanilla HTML page containing the CSS inline.\n\nJSON Map:\n${JSON.stringify(result.tree)}`;
+      
+      const cleanHtml = await callKimiAI(aiPrompt);
+      console.log(`  [cdp] Received clean HTML from AI. Injecting back into page...`);
+      
+      // 3. Inject the clean HTML back into the page
+      const injectScript = `(function() {
+        document.open();
+        document.write(${JSON.stringify(cleanHtml)});
+        document.close();
+      })()`;
+      await evaluate(ws, injectScript);
+      
+      // 4. Short settle time after injection
+      await sleep(1000);
+
+      // 5. Capture the injected AI output width using the normal flow
+      const captureResult = await captureWidth(ws, width);
+      captures.push(captureResult);
     }
 
     const title = captures[0] ? captures[0].title : '';

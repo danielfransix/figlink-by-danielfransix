@@ -569,7 +569,29 @@ function applyShadows(node, s) {
     const sh = parseOneBoxShadow(part.trim());
     if (sh) shadows.push(sh);
   }
-  if (shadows.length > 0) node.effects = shadows;
+  if (shadows.length > 0) {
+    try {
+      node.effects = shadows;
+    } catch (e) {
+      if (e.message && e.message.includes('spread')) {
+        try {
+          // Add a transparent fill to satisfy Figma's requirement for spread
+          const currentFills = Array.isArray(node.fills) ? node.fills.slice() : [];
+          currentFills.push(solidFill({ r: 1, g: 1, b: 1, a: 0 }));
+          node.fills = currentFills;
+          node.effects = shadows;
+        } catch (e2) {
+          // Fallback: strip spread if it still fails
+          const noSpread = shadows.map(sh => {
+            const copy = Object.assign({}, sh);
+            delete copy.spread;
+            return copy;
+          });
+          try { node.effects = noSpread; } catch (e3) {}
+        }
+      }
+    }
+  }
 }
 
 function applyOpacity(node, opacityStr) {
