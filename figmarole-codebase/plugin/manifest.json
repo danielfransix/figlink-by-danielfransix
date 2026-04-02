@@ -1,0 +1,13 @@
+{
+  "name": "figmarole",
+  "id": "figmarole-by-danielfransix-001",
+  "api": "1.0.0",
+  "main": "code.js",
+  "ui": "ui.html",
+  "editorType": ["figma"],
+  "networkAccess": {
+    "allowedDomains": ["https://fonts.googleapis.com", "https://fonts.gstatic.com"],
+    "reasoning": "figmarole loads Cal Sans from Google Fonts for the plugin UI",
+    "devAllowedDomains": ["http://localhost:7331"]
+  }
+}
