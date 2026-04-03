@@ -1,5 +1,7 @@
 # Figlink
 
+*If you find this project useful, please consider giving it a star ⭐ on GitHub!*
+
 **Let your AI assistant control Figma.** Open a chat, describe what you want done in your design file, and watch it happen — renaming layers, applying styles, binding variables, all of it.
 
 ---
@@ -16,26 +18,30 @@ That's it. You don't need to know how to code.
 
 ## Set up (one time only)
 
-### Step 1 — Install the plugin into Figma
+### Step 1 — Clone the repository
+
+1. Copy the URL of this repository from your browser
+2. Open your AI IDE (Cursor, Windsurf, Trae, etc.)
+3. Ask your AI to clone the repository to your local computer
+4. Once cloned, ask your AI to give you the path to the folder where the system is installed
+
+### Step 2 — Start the system
+
+1. Open the folder your AI just gave you the path for
+2. Start Figlink based on your operating system:
+   - **Windows:** Double-click `Windows Start Figlink.bat`
+   - **Mac:** Double-click `Mac Start Figlink.command` (if a security warning appears, go to System Settings → Privacy & Security and click Open Anyway)
+3. A terminal window opens and stays open. Leave it running.
+
+### Step 3 — Install the plugin into Figma
 
 1. Open Figma Desktop
 2. Click the Figma logo (top left) → **Plugins** → **Development** → **Import plugin from manifest**
-3. A file browser opens — navigate to your Figlink folder, then into the `figma-plugin` subfolder, and select the file called `manifest.json`
+3. A file browser opens — navigate to the folder your AI gave you the path for, then into the `figma-plugin` subfolder, and select the file called `manifest.json`
 4. Click **Open**
+5. Run the plugin (Figma logo → Plugins → Development → Figlink → Run)
 
 The plugin is now installed. You'll only ever do this once.
-
----
-
-### Step 2 — Open the Figlink folder in your AI's workspace
-
-Your AI needs to be able to "see" the Figlink folder so it can run commands.
-
-- **Cursor / Windsurf / VS Code:** File → Open Folder → select the Figlink folder
-- **Claude Desktop:** Add the Figlink folder as a project or workspace
-- **ChatGPT / other:** Make sure your AI has access to a terminal that can run files from this folder
-
-> The AI doesn't need to read or understand the files — it just needs to be able to run them.
 
 ---
 
@@ -43,11 +49,11 @@ Your AI needs to be able to "see" the Figlink folder so it can run commands.
 
 ### Step 1 — Start Figlink
 
-**Windows:** Double-click `Start Figlink.bat`
+**Windows:** Double-click `Windows Start Figlink.bat`
 
-**Mac:** Double-click `Start Figlink.command`
+**Mac:** Double-click `Mac Start Figlink.command`
 - If a security warning appears, go to **System Settings → Privacy & Security** and click **Open Anyway**, then double-click it again.
-- If it still won't open, run this once in Terminal: `chmod +x "Start Figlink.command"` then double-click it.
+- If it still won't open, run this once in Terminal: `chmod +x "Mac Start Figlink.command"` then double-click it.
 
 **Or from any terminal:** `node start.js`
 
@@ -61,7 +67,7 @@ A terminal window opens and stays open. Leave it running.
 2. Click the Figma logo → **Plugins** → **Development** → **Figlink** → **Run**
 3. A small panel appears in the bottom-right corner of Figma
 
-**The green dot means it's working.** It will say something like `Design System · ready` with your file's name.
+**The dot changes from orange to green and says "Connected".** Just below it, it will show your file's name like `Design System · ready`.
 
 > If it shows an orange dot: Figlink isn't running. Go back to Step 1.
 
@@ -69,23 +75,28 @@ A terminal window opens and stays open. Leave it running.
 
 ### Step 3 — Tell your AI what you want
 
-Open a chat with your AI and just describe what you want done. You don't need special commands or technical language.
+Open a chat with your AI in the IDE while the repository folder is open. Ask your AI to check if you are properly connected via Figlink.
 
-**Some things you can ask:**
+Once it confirms you are connected, you can start prompting! You don't need special commands or technical language.
+
+**Some wild things you can ask:**
 
 - *"Rename all the frame layers in this selection to match their text content"*
-- *"Apply the spacing variables to all the padding and gaps in this component"*
 - *"Look at the styles in this file and bind all the color fills to the nearest color variable"*
-- *"Read the layers in this frame and tell me which ones don't have styles applied"*
-- *"Here's a Figma link — standardize it: [paste link]"*
+- *"Here's a Figma link — standardize it based on our design system: [paste link]"*
+- *"Extract all the semantic color tokens from this webpage and apply them to the currently selected frames"*
+- *"Analyze the layout structure of these cards and make them all use auto-layout with consistent padding"*
+- *"Read the text in these layers, translate it to Spanish using your own knowledge, and update the layers"*
 
 The AI reads your Figma file, thinks about what needs to change, and makes the changes directly. You'll see them appear in Figma in real time.
+
+**Note:** Your AI will sometimes need to make changes to the code in this repository to achieve your unique asks. This is perfectly fine and expected! That is the power of this system: it doesn't try to cater to every usecase, it simply provides a bridge that the AI can then use to reliably do anything.
 
 ---
 
 ## Working with multiple Figma files
 
-You can have the plugin running in more than one Figma file at the same time. When you do, just tell the AI which file you're talking about:
+You can have the plugin running in more than one Figma file at the same time (up to 8 concurrent connected files). When you do, just tell the AI which file you're talking about by cross-referencing them:
 
 *"Here's the link to the design system file: [link]. And here's the file I want you to update: [link]. Copy the color variables from the first file and apply them to the frames in the second."*
 
@@ -93,29 +104,22 @@ You can have the plugin running in more than one Figma file at the same time. Wh
 
 ## The system prompt (optional)
 
-Figlink has a system prompt — a set of instructions that tell the AI exactly how to work with your design system. You can see it at `prompts/prompt-files/standardize.md`.
+Figlink has a system prompt — a set of instructions that tell the AI exactly how to work with your design system. You can see it at `prompts/system.md`.
 
 You can edit this file to customize the AI's behavior for your specific design system. Changes take effect immediately — no restart needed.
 
 **To turn the system prompt off** (if you want the AI to work freely without instructions):
 
-Open `prompts/prompt-setter.txt` and change:
-```
-send_prompt=true
-```
-to:
-```
-send_prompt=false
-```
+Simply rename, move, or delete `prompts/system.md`.
 
-Then restart Figlink. Set it back to `true` whenever you want the instructions back.
+Restarting Figlink is not needed. Put it back at `prompts/system.md` whenever you want the instructions back.
 
 ---
 
 ## If something goes wrong
 
 **Orange dot in the plugin / "Connecting"**
-→ Figlink isn't running. Double-click `Start Figlink.bat` or `Start Figlink.command` and wait a moment.
+→ Figlink isn't running. Double-click `Windows Start Figlink.bat` or `Mac Start Figlink.command` and wait a moment.
 
 **Red dot / "Link not running"**
 → Same as above — Figlink stopped. Start it again.

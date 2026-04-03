@@ -31,21 +31,13 @@ The single entry point. Coordinates everything at startup and keeps watching for
 1. Prints the styled terminal banner.
 2. Checks if running on macOS with an unexecutable `.command` launcher and surfaces a `chmod +x` hint.
 3. Runs `npm install` in `link-server/` if `node_modules` is absent.
-4. Calls `loadActivePrompt()` — see Prompt System below.
+4. Calls `checkSystemPrompt()` to warn if `prompts/system.md` is missing.
 5. Calls `startServer()` — spawns the server process, sets up IPC.
 6. Calls `watchFiles()` — watches `link-server/` and `figma-plugin/`.
-
-**`loadActivePrompt()`:**
-- Reads `prompts/prompt-setter.txt` and parses two settings:
-  - `prompt_id='<id>'` — identifies which `.md` file to load from `prompts/prompt-files/`.
-  - `send_prompt=true/false` — controls whether the prompt content is forwarded to AI clients. Defaults to `true` if the line is absent.
-- Validates the file exists, is readable, is not a directory, warns if empty or >100 KB.
-- Returns `{ id, content, path, sendPrompt }`.
 
 **`startServer()`:**
 - Kills any process already occupying port 9001 (platform-specific: `netstat` + `taskkill` on Windows; `lsof | xargs kill -9` on Unix).
 - Spawns `link-server/server.js` as a child process with `stdio: ['ignore', 'inherit', 'inherit', 'ipc']`.
-- Listens for the `{ type: 'ready' }` IPC message from the server (sent when `wss.on('listening')` fires) then sends the active prompt: `{ type: 'set_prompt', id, content, path, sendPrompt }`.
 - Auto-restarts the server on unexpected exits (not on its own `SIGTERM`).
 
 **`watchFiles()`:**
@@ -64,17 +56,16 @@ A lightweight `ws`-based WebSocket server on port 9001. Routes commands between 
 ```javascript
 plugins: Map<fileKey, { ws, name }>         // One entry per connected Figma file
 pending: Map<id, { sender, fileKey, createdAt }> // In-flight commands awaiting plugin response
-activePrompt: { id, content, path, sendPrompt }  // Set once via IPC from start.js
 ```
 
 **Connection lifecycle:**
 
 1. **Plugin registration** — plugin sends `{ type: 'register', role: 'plugin', fileKey, fileName }`. If `fileKey` is absent, the server generates `unnamed-{timestamp}-{5-char random}` to avoid collisions. The entry is stored in `plugins`.
 
-2. **First CLI client message (auto-inject)** — on a client's very first message, the server sends back `{ type: 'active_prompt', id, content, sendPrompt }`. If `sendPrompt` is `false`, `content` is `null`.
+2. **First CLI client message (auto-inject)** — on a client's very first message, the server attempts to read `prompts/system.md` from disk and sends it back as `{ type: 'active_prompt', id: 'system', content }`. If the file does not exist, the injection is silently skipped.
 
 3. **Command routing:**
-   - `list_connected_files` and `get_active_prompt` are answered directly by the server; never forwarded to a plugin.
+   - `list_connected_files` is answered directly by the server; never forwarded to a plugin.
    - All other commands are forwarded to the plugin matching `msg.fileKey`. If `fileKey` is omitted and only one plugin is connected, that one is used. `{ sender, fileKey, createdAt: Date.now() }` is stored in `pending`.
    - Plugin result arrives → `pending.delete(msg.id)` (always, regardless of whether sender is still open) → result forwarded to sender if still `OPEN`.
 
@@ -83,13 +74,7 @@ activePrompt: { id, content, path, sendPrompt }  // Set once via IPC from start.
 5. **Plugin disconnect** — removes from `plugins`, resolves all pending requests for that `fileKey` with a disconnect error.
 
 **IPC messages received from `start.js`:**
-- `{ type: 'set_prompt', id, content, path, sendPrompt }` → sets `activePrompt`.
 - `{ type: 'code_changed' }` → broadcasts `{ type: 'code_changed' }` to all connected plugins.
-
-**`get_active_prompt` command:**
-- Re-reads `activePrompt.path` from disk on every call (so prompt edits are reflected without restarting).
-- If disk read fails, logs a warning and falls back to the cached `activePrompt.content`.
-- Returns `{ id, content, sendPrompt }`. `content` is `null` when `sendPrompt` is `false`.
 
 ---
 
@@ -227,11 +212,6 @@ node tools/process.js [--file <fileKey|figmaUrl>] standardize-file
 node tools/process.js clean
 ```
 
-**`printActivePrompt()`:**
-- Calls `get_active_prompt` (5s timeout).
-- If `result.sendPrompt === false`: prints a one-line notice `[Figlink] Active prompt: <id> (send_prompt=false — content suppressed)` without revealing the content.
-- If `sendPrompt === true` and content is present: prints the full prompt block.
-
 **Module vs CLI:** The file wraps its CLI dispatch block in `if (require.main === module)`, so external scripts can safely `require('./tools/process.js')` to import `sendCommand` without triggering the CLI logic. This is the correct pattern for any new tool scripts added under `tools/`.
 
 **`standardize <nodeId>`:**
@@ -263,22 +243,15 @@ node tools/process.js clean
 
 ## 3. Prompt system
 
-**File:** `prompts/prompt-setter.txt`
+**File:** `prompts/system.md`
 
-```
-prompt_id='standardize'
-send_prompt=true
-```
+This file contains the system instructions for the AI assistant. 
 
-- `prompt_id` — name of the active prompt file (without `.md`) inside `prompts/prompt-files/`.
-- `send_prompt` — `true` (default) or `false`. When `false`:
-  - The server returns `content: null` for both the auto-inject and `get_active_prompt` calls.
-  - `process.js` prints a suppression notice instead of the prompt content.
-  - The AI receives no prompt content.
+When a CLI client makes its first request, the server reads this file and auto-injects its content as an `active_prompt` message. If the file is renamed or deleted, the AI will not receive any system instructions.
 
-**Prompt files:** Markdown files in `prompts/prompt-files/<id>.md`. These are workflow instructions the AI follows. They can be changed on disk while the server is running — `get_active_prompt` re-reads from disk on every call so the AI always sees the latest version without a server restart.
+Because the server reads the file from disk on every new connection, changes to `system.md` take effect immediately without requiring a server restart.
 
-**Prompt file content rule:** Prompt files must be **generic, reusable workflow guides** — they describe *how* to approach a class of task, not *what* to do for a specific task. They must never contain task-specific data such as URLs, file keys, hex values scraped from a particular site, or target node IDs.
+**Prompt file content rule:** The system prompt must be a **generic, reusable workflow guide** — it describes *how* to approach a class of task, not *what* to do for a specific task. It must never contain task-specific data such as URLs, file keys, hex values scraped from a particular site, or target node IDs.
 
 **Task-specific data belongs in `temp/`:** Extracted design tokens, build plans, site-specific specs, and intermediate scripts for a particular job should be written to `temp/<task-name>-*.md` (or `.js`, `.json`). The `temp/` folder is gitignored and is cleaned with `node tools/process.js clean`.
 
@@ -289,8 +262,8 @@ send_prompt=true
 ```
 figlink/
 ├── start.js                        # Launcher, watcher, IPC parent
-├── Start Figlink.bat               # Windows double-click launcher
-├── Start Figlink.command           # Mac double-click launcher
+├── Windows Start Figlink.bat       # Windows double-click launcher
+├── Mac Start Figlink.command       # Mac double-click launcher
 │
 ├── figma-plugin/
 │   ├── code.js                     # Plugin logic (Figma Plugin API)
@@ -307,9 +280,10 @@ figlink/
 │   └── eval.js                     # Dev utility / REPL helper
 │
 ├── prompts/
-│   ├── prompt-setter.txt           # Active prompt config (prompt_id + send_prompt)
-│   └── prompt-files/
-│       └── standardize.md          # Standardization workflow instructions
+│   ├── system.md                   # System instructions auto-injected to AI
+│   └── library/
+│       ├── standardize.md          # Example instructions for standardization
+│       └── website-recreation.md   # Example instructions for website recreation
 │
 ├── docs/
 │   └── TECHNICAL_ARCHITECTURE.md  # This file
@@ -324,11 +298,9 @@ figlink/
 
 ```
 1.  node start.js
-    → reads prompts/prompt-setter.txt → loadActivePrompt()
+    → checks if prompts/system.md exists
     → kills anything on port 9001 → spawns server.js
-    → server.js signals { type: 'ready' } over IPC
-    → start.js sends { type: 'set_prompt', id, content, path, sendPrompt }
-    → server.js stores activePrompt
+    → watches files for changes
 
 2.  User opens Figma File A (key: "abc") and runs the plugin
     → ui.html connects to ws://localhost:9001
@@ -340,7 +312,7 @@ figlink/
 3.  AI runs: node tools/figma.js --file abc get_local_variables
     → figma.js opens a new WebSocket to ws://localhost:9001
     → sends { id: 'uuid-1', command: 'get_local_variables', params: {}, fileKey: 'abc' }
-    → server receives first message from this client → sends active_prompt (content if sendPrompt=true)
+    → server receives first message from this client → reads system.md and sends active_prompt
     → server matches fileKey 'abc' → stores pending.set('uuid-1', { sender, fileKey: 'abc', createdAt })
     → server forwards { id: 'uuid-1', command: 'get_local_variables', params: {} } to plugin
     → plugin runs getLocalVariables() → posts { id: 'uuid-1', result: [...] } to ui.html
@@ -364,7 +336,7 @@ figlink/
 | Scenario | Behaviour |
 |----------|-----------|
 | JSON parse failure on server | `console.warn` with first 120 chars of raw message; message dropped |
-| Prompt file unreadable at runtime | `console.warn`; falls back to cached `activePrompt.content` |
+| `system.md` unreadable at runtime | Injection silently skipped; AI receives no prompt |
 | Plugin disconnects mid-command | All pending requests for that fileKey resolved with disconnect error |
 | Pending entry not answered in 30s | TTL sweep sends timeout error to caller; entry deleted |
 | Sender closed before plugin responds | `pending.delete` still runs; send skipped if `readyState !== OPEN` |
@@ -389,7 +361,7 @@ figlink/
 
 - **Plugin must stay open.** All commands time out if the plugin is closed. There is no persistent background execution inside Figma.
 - **Plugin can't self-reload.** The Figma Plugin API does not expose a reload method. Code changes require the user to manually re-run the plugin.
-- **IPC requires `start.js`.** Running `server.js` directly serves WebSocket clients normally, but `code_changed` notifications and prompt loading won't work.
+- **IPC requires `start.js`.** Running `server.js` directly serves WebSocket clients normally, but `code_changed` notifications won't work.
 - **`figma.fileKey` may be null.** On draft files or during plugin development, `figma.fileKey` is unavailable. The plugin falls back to `figma.root.name` as the fileKey. This can cause routing issues if two files have the same name.
 - **Mixed properties.** `figma.mixed` is serialized as `null`. Fields with mixed values are skipped during standardization matching.
 - **Vector payloads.** `skipVectors: true` is the default in `get_nodes_flat`. Large vector networks produce payloads that can approach WebSocket message size limits.

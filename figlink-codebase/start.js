@@ -208,7 +208,7 @@ process.on('SIGTERM', shutdown);
 
 function checkMacLauncher() {
   if (process.platform !== 'darwin') return;
-  const commandFile = path.join(ROOT, 'Start Figlink.command');
+  const commandFile = path.join(ROOT, 'Mac Start Figlink.command');
   if (!fs.existsSync(commandFile)) return;
   try {
     fs.accessSync(commandFile, fs.constants.X_OK);
