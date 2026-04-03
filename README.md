@@ -81,12 +81,17 @@ Once it confirms you are connected, you can start prompting! You don't need spec
 
 **Some wild things you can ask:**
 
-- *"Rename all the frame layers in this selection to match their text content"*
-- *"Look at the styles in this file and bind all the color fills to the nearest color variable"*
+- *"Read the `tailwind.config.js` in my local codebase, compare its spacing tokens to the auto-layout gaps in this Figma file, and adjust the Figma file to match the code exactly."*
+- *"Analyze the spatial coordinates of these absolute-positioned elements and automatically restructure them into proper auto-layout rows and columns."*
+- *"Connect to this master design system [link] and my current file [link], then replace all hardcoded hex codes in my file with the closest matching semantic variables from the master."*
+- *"Translate all text layers in these screens to German, and if the new text overflows, convert the parent frames to auto-layout so they expand correctly."*
+- *"Scan this entire page for WCAG AA contrast violations, automatically adjust the lightness of failing text to pass, and generate a markdown report of the changes."*
 - *"Here's a Figma link — standardize it based on our design system: [paste link]"*
 - *"Extract all the semantic color tokens from this webpage and apply them to the currently selected frames"*
 - *"Analyze the layout structure of these cards and make them all use auto-layout with consistent padding"*
+- *"Look at the styles in this file and bind all the color fills to the nearest color variable"*
 - *"Read the text in these layers, translate it to Spanish using your own knowledge, and update the layers"*
+- *"Rename all the frame layers in this selection to match their text content"*
 
 The AI reads your Figma file, thinks about what needs to change, and makes the changes directly. You'll see them appear in Figma in real time.
 
