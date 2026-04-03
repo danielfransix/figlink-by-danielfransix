@@ -179,7 +179,11 @@ const SETTABLE_PROPERTIES = new Set([
   'paddingLeft', 'paddingRight', 'paddingTop', 'paddingBottom',
   'itemSpacing', 'counterAxisSpacing',
   'cornerRadius', 'topLeftRadius', 'topRightRadius', 'bottomLeftRadius', 'bottomRightRadius',
-  'constraints', 'layoutAlign', 'layoutGrow',
+  'constraints', 'layoutAlign', 'layoutGrow', 'primaryAxisAlignItems', 'counterAxisAlignItems',
+  'textAlignHorizontal', 'textAlignVertical', 'textAutoResize',
+  'rotation', 'layoutWrap', 'layoutPositioning', 'itemReverseZIndex', 'strokesIncludedInLayout',
+  'cornerSmoothing', 'lineHeight', 'letterSpacing', 'paragraphSpacing', 'textCase', 'textDecoration',
+  'reactions', 'scrollBehavior', 'overflowDirection', 'flowStartingPoints'
 ]);
 
 // Font loading cache — avoids redundant figma.loadFontAsync calls within a session
@@ -237,10 +241,38 @@ function serializeNode(node, depth) {
     type: node.type,
   };
 
+  if ('rotation' in node && node.rotation !== 0) base.rotation = node.rotation;
+  if ('layoutPositioning' in node && node.layoutPositioning === 'ABSOLUTE') base.layoutPositioning = node.layoutPositioning;
+  if ('layoutAlign' in node) base.layoutAlign = node.layoutAlign;
+  if ('layoutGrow' in node) base.layoutGrow = node.layoutGrow;
+  
+  if ('reactions' in node && node.reactions.length > 0) {
+    base.reactions = node.reactions;
+  }
+  
+  if ('scrollBehavior' in node) {
+    base.scrollBehavior = node.scrollBehavior;
+  }
+  if ('overflowDirection' in node) {
+    base.overflowDirection = node.overflowDirection;
+  }
+  if (node.type === 'PAGE' && 'flowStartingPoints' in node) {
+    base.flowStartingPoints = node.flowStartingPoints;
+  }
+
   // TEXT
   if (node.type === 'TEXT') {
     base.text = node.characters;
     base.fontSize = isMixed(node.fontSize) ? null : node.fontSize;
+    base.textAlignHorizontal = node.textAlignHorizontal;
+    base.textAlignVertical = node.textAlignVertical;
+    base.textAutoResize = node.textAutoResize;
+    if (!isMixed(node.lineHeight)) base.lineHeight = node.lineHeight;
+    if (!isMixed(node.letterSpacing)) base.letterSpacing = node.letterSpacing;
+    if (!isMixed(node.paragraphSpacing)) base.paragraphSpacing = node.paragraphSpacing;
+    if (!isMixed(node.textCase)) base.textCase = node.textCase;
+    if (!isMixed(node.textDecoration)) base.textDecoration = node.textDecoration;
+    
     if (!isMixed(node.fontName) && node.fontName) {
       base.fontFamily = node.fontName.family;
       base.fontWeight = node.fontName.style;
@@ -274,11 +306,22 @@ function serializeNode(node, depth) {
   // Corner radius
   if ('cornerRadius' in node) {
     base.cornerRadius = isMixed(node.cornerRadius) ? null : node.cornerRadius;
+    if ('cornerSmoothing' in node) {
+      base.cornerSmoothing = node.cornerSmoothing;
+    }
     if ('topLeftRadius' in node) {
       base.topLeftRadius = node.topLeftRadius;
       base.topRightRadius = node.topRightRadius;
       base.bottomRightRadius = node.bottomRightRadius;
       base.bottomLeftRadius = node.bottomLeftRadius;
+    }
+  }
+
+  // Strokes
+  if ('strokes' in node) {
+    if (!isMixed(node.strokes)) base.strokes = serializeFills(node.strokes); // Re-use serializeFills for strokes
+    if ('strokeWeight' in node) {
+      base.strokeWeight = isMixed(node.strokeWeight) ? null : node.strokeWeight;
     }
   }
 
@@ -288,8 +331,22 @@ function serializeNode(node, depth) {
     base.paddingRight = node.paddingRight;
     base.paddingBottom = node.paddingBottom;
     base.paddingLeft = node.paddingLeft;
-    base.itemSpacing = node.itemSpacing;
-    base.counterAxisSpacing = node.counterAxisSpacing !== undefined ? node.counterAxisSpacing : null;
+    
+    if ('primaryAxisAlignItems' in node && node.primaryAxisAlignItems === 'SPACE_BETWEEN') {
+      base.itemSpacing = 'auto';
+    } else {
+      base.itemSpacing = node.itemSpacing;
+    }
+    
+    if ('counterAxisAlignContent' in node && node.counterAxisAlignContent === 'SPACE_BETWEEN') {
+      base.counterAxisSpacing = 'auto';
+    } else {
+      base.counterAxisSpacing = node.counterAxisSpacing !== undefined ? node.counterAxisSpacing : null;
+    }
+    
+    if ('layoutWrap' in node) base.layoutWrap = node.layoutWrap;
+    if ('itemReverseZIndex' in node && node.itemReverseZIndex) base.itemReverseZIndex = node.itemReverseZIndex;
+    if ('strokesIncludedInLayout' in node && node.strokesIncludedInLayout) base.strokesIncludedInLayout = node.strokesIncludedInLayout;
   }
 
   // Recurse
@@ -972,7 +1029,12 @@ async function applyNodeProps(node, props) {
   for (const [key, value] of Object.entries(props)) {
     if (SKIP.has(key)) continue;
     try {
-      if (key === 'fills') {
+      if (key === 'itemSpacing' && value === 'auto') {
+        node.primaryAxisAlignItems = 'SPACE_BETWEEN';
+      } else if (key === 'itemSpacing' && typeof value === 'number') {
+        node.primaryAxisAlignItems = 'MIN'; // Or default, but need to reset if it was auto
+        node.itemSpacing = value;
+      } else if (key === 'fills') {
         node.fills = value.map(makeFill);
       } else if (key === 'strokes') {
         node.strokes = value.map(makeStroke);
@@ -982,6 +1044,8 @@ async function applyNodeProps(node, props) {
         node.characters = value;
       } else if (key === 'effects') {
         node.effects = value;
+      } else if (key === 'reactions') {
+        await node.setReactionsAsync(value);
       } else if (key === 'strokeWeight') {
         node.strokeWeight = value;
       } else if (key === 'strokeAlign') {

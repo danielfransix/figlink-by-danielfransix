@@ -1,0 +1,2177 @@
+<!DOCTYPE html>
+<!--  This site was created in Webflow. https://webflow.com  --><!--  Last Published: Mon Jul 08 2024 16:13:25 GMT+0000 (Coordinated Universal Time)  -->
+<html data-wf-page="6661acf0edb53d45a1b7198e" data-wf-site="6661acf0edb53d45a1b7197f">
+
+<head>
+  <meta charset="utf-8" />
+  <title>Peppermint | Launch a Card Program in Minutes</title>
+  <meta
+    content="Delight your customers with unique payment experiences that boost loyalty, ensure revenue, and elevate your brand."
+    name="description" />
+  <meta
+    content="https://uploads-ssl.webflow.com/6661acf0edb53d45a1b7197f/666c30a8404bd24b2b8efd1b_peppermint-opengraph.png"
+    property="og:image" />
+  <meta
+    content="https://uploads-ssl.webflow.com/6661acf0edb53d45a1b7197f/666c30a8404bd24b2b8efd1b_peppermint-opengraph.png"
+    property="twitter:image" />
+  <meta content="width=device-width, initial-scale=1" name="viewport" />
+  <meta content="Webflow" name="generator" />
+  <link href="css/normalize.css" rel="stylesheet" type="text/css" />
+  <link href="css/webflow.css" rel="stylesheet" type="text/css" />
+  <link href="css/peppermint-check.webflow.css" rel="stylesheet" type="text/css" />
+  <script type="text/javascript">
+    !(function (o, c) {
+      var n = c.documentElement,
+        t = " w-mod-";
+      (n.className += t + "js"),
+        ("ontouchstart" in o ||
+          (o.DocumentTouch && c instanceof DocumentTouch)) &&
+        (n.className += t + "touch");
+    })(window, document);
+  </script>
+  <link href="images/favicon.svg" rel="shortcut icon" type="image/x-icon" />
+  <link href="images/webclip.svg" rel="apple-touch-icon" />
+  <style>
+    [data-header-anim],
+    [data-hero-anim],
+    [data-subtext-anim] {
+      visibility: hidden;
+      opacity: 0;
+      font-kerning: none;
+      -webkit-text-rendering: optimizeSpeed;
+      text-rendering: optimizeSpeed;
+      -webkit-transform: translateZ(0);
+    }
+
+    #shape {
+      visibility: hidden;
+    }
+
+    html.lenis,
+    html.lenis body {
+      height: auto;
+    }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.138.3/build/three.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.138.3/examples/js/loaders/GLTFLoader.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.138.3/examples/js/loaders/DRACOLoader.js"></script>
+  <style>
+    [data-header-anim],
+    .hero-swirl,
+    .swiper-one-illustration {
+      visibility: hidden;
+      opacity: 0;
+      font-kerning: none;
+      -webkit-text-rendering: optimizeSpeed;
+      text-rendering: optimizeSpeed;
+      -webkit-transform: translateZ(0);
+    }
+
+    .accordion-content {
+      max-height: 16px;
+    }
+
+    [data-contact-anim],
+    .hero-hand_illustration,
+    .hero-shape,
+    .c-star {
+      opacity: 0;
+      visibility: hidden;
+    }
+
+    .c-faq {
+      margin-top: -70vh;
+    }
+
+    .card-canvas {
+      width: 100%;
+      max-width: none !important;
+    }
+
+    @media screen and (max-width: 1024px) {
+      .c-faq {
+        margin-top: -100vh;
+      }
+    }
+
+    @media screen and (max-width: 991px) {
+      .service-illustration_line {
+        margin-top: -20px;
+      }
+
+      .c-faq {
+        margin-top: -80vh;
+      }
+    }
+
+    @media screen and (max-width: 767px) {
+      .relative {
+        height: 600px;
+        width: 100%;
+      }
+
+      .c-faq {
+        margin-top: 0px;
+      }
+    }
+
+    @media screen and (min-width: 1900px) {
+      .c-faq {
+        margin-top: -55vh;
+      }
+
+      .service-text_inner {
+        top: 200px;
+        transform: translateX(-50%);
+      }
+
+      .debit-card.cc-orange {
+        bottom: 50vh;
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="global-embed w-embed">
+    <style>
+      /** Links **/
+      a {
+        color: inherit;
+        text-decoration: none;
+      }
+
+      /** Form elements **/
+      textarea,
+      input.text,
+      input[type="text"],
+      input[type="button"],
+      input[type="submit"],
+      .input-checkbox,
+      .w-input,
+      .w-select {
+        -webkit-appearance: none;
+        resize: vertical;
+      }
+
+      .cc-no-resize,
+      .cc-no-border,
+      .cc-has-cta,
+      .cc-has-counter {
+        resize: none;
+      }
+
+      .w-select {
+        background-position: center right 2px;
+      }
+
+      input[type="email"] {
+        text-transform: lowercase;
+      }
+
+      input::-webkit-outer-spin-button,
+      input::-webkit-inner-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+      }
+
+      input[type="number"] {
+        -moz-appearance: textfield;
+      }
+
+      /** Images **/
+      img {
+        -webkit-user-drag: none;
+        -khtml-user-drag: none;
+        -moz-user-drag: none;
+        -o-user-drag: none;
+        user-drag: none;
+      }
+
+      #scrollbar {
+        scrollbar-width: none;
+        /* firefox */
+        -ms-overflow-style: none;
+        /* IE 10+ */
+      }
+
+      ::-webkit-scrollbar {
+        display: none;
+        /* Safari and Chrome */
+      }
+
+      /** Buttons **/
+      .c-button {
+        display: inline-flex;
+      }
+
+      /** Popups **/
+      .c-popup.cc-hide {
+        visibility: hidden;
+      }
+
+      .c-popup {
+        visibility: visible;
+      }
+
+      body {
+        background: var(--metal);
+      }
+
+      body:has(.page-wrapper.cc-contact) {
+        background: var(--cream);
+      }
+
+      .footer-text {
+        font-size: clamp(200px, 19vw, 360px);
+      }
+
+      .usecase-slide.swiper-slide.swiper-slide-active {
+        opacity: 1 !important;
+      }
+
+      .progress-fill {
+        width: 0%;
+        height: 100%;
+        background: #735af4;
+      }
+
+      .opaque-line {
+        position: relative;
+        padding-bottom: 20px;
+      }
+
+      .more-card:hover .more-card_image {
+        transform: scale(0.98);
+      }
+
+      .more-card:hover {
+        background-position: 50% -2%;
+      }
+
+      .more-card:hover .more-card_details {
+        transform: scale(1.01);
+      }
+
+      .usecases-illustration_container {
+        top: clamp(20px, 5vw, 100px);
+      }
+
+      .c-button:hover .btn-overlay {
+        width: 100%;
+      }
+
+      .c-button:hover .btn-illustration {
+        transform: translateX(0);
+        right: 10px;
+      }
+
+      .heading-h1 {
+        font-size: clamp(90px, 9vw, 133px);
+        line-height: clamp(90px, 8vw, 113px);
+      }
+
+      .hero-hand_illustration {
+        top: clamp(585px, 62vh, 650px);
+      }
+
+      @media screen and (max-width: 991px) {
+        .footer-text {
+          font-size: clamp(100px, 20vw, 220px);
+        }
+
+        .opaque-line {
+          padding-bottom: 15px;
+        }
+
+        .heading-h1 {
+          font-size: 90px;
+          line-height: 0.9;
+        }
+
+        .hero-hand_illustration {
+          top: 550px;
+        }
+      }
+
+      @media screen and (max-width: 767px) {
+        .opaque-line {
+          padding-bottom: 0;
+        }
+
+        .service-illustration_line {
+          margin-top: 0;
+        }
+
+        .header-parent {
+          padding-bottom: 0;
+          margin-top: 0;
+        }
+
+        .hero-line,
+        .header-line {
+          padding-bottom: 10px;
+        }
+
+        .heading-h1 {
+          font-size: 60px;
+        }
+
+        .hero-hand_illustration {
+          top: 550px;
+        }
+
+        .usecase-slide:last-child {
+          margin-right: 0px;
+          width: 100%;
+        }
+      }
+
+      @media screen and (max-width: 567px) {
+        .footer-text {
+          font-size: clamp(64px, 18.5vw, 190px);
+        }
+
+        .heading-h1 {
+          font-size: 50px;
+        }
+
+        .hero-hand_illustration {
+          top: 545px;
+        }
+      }
+    </style>
+  </div>
+  <div class="page-wrapper">
+    <main class="c-main">
+      <div class="c-section">
+        <section class="c-hero">
+          <a data-hero-fade="" href="index.html" aria-current="page" class="company-logo w-inline-block w--current"></a>
+          <div class="hero-shape">
+            <div class="hero-shape_inner"></div>
+          </div>
+          <div class="hero-inner cc-home">
+            <h1 class="heading-h1">
+              Launch a card program in minutes &nbsp;
+            </h1>
+            <p class="hero-subtext">
+              Delight your customers with unique payment experiences that
+              boost loyalty, assure revenue, and elevate your brand.
+            </p>
+            <a data-hero-fade="" href="contact-us.html" class="c-button cc-home w-inline-block">
+              <div class="btn-text">Get Peppermint</div>
+            </a>
+          </div>
+          <div class="hero-swirl_container">
+            <div class="hero-swirl cc-one w-embed">
+              <svg viewbox="0 0 313 296" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <mask id="mask0_377_1050" style="mask-type: alpha" maskunits="userSpaceOnUse" x="10" y="112" width="301"
+                  height="84">
+                  <path
+                    d="M14.3873 195.899C21.1795 194.042 27.9915 192.311 34.8033 190.62C78.9758 179.71 123.563 170.425 168.245 161.885C169.598 161.65 173.507 160.881 174.682 160.65L175.976 160.328L178.554 159.686C219.333 149.449 260.126 138.082 299.398 123.031C302.916 121.646 306.757 120.118 310.81 118.441L309.519 112.885C306.901 113.949 304.456 114.915 302.226 115.782C271.443 127.54 239.272 136.39 207.208 143.962C196.197 146.519 183.883 149.237 172.876 151.5C167.567 152.354 161.069 153.185 156.028 153.955C107.552 160.75 58.9613 166.958 10.1292 170.525L14.3873 195.899Z"
+                    fill="#735BF6"></path>
+                </mask>
+                <g mask="url(#mask0_377_1050)">
+                  <path class="purple-path path" d="M5.45215 185.5C77.9521 175.333 249.852 143.3 313.452 114.5"
+                    stroke="#735BF6" stroke-width="40"></path>
+                </g>
+              </svg>
+            </div>
+            <div class="hero-swirl cc-two w-embed">
+              <svg viewbox="0 0 855 774" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <mask id="mask0_377_1052" style="mask-type: alpha" maskunits="userSpaceOnUse" x="111" y="1" width="612"
+                  height="694">
+                  <path
+                    d="M112.905 694.938C156.127 689.613 199.153 681.551 240.474 667.606C287.785 651.347 336.868 627.077 367.903 586.553C375.661 576.193 382.169 564.223 385.498 551.559C405.889 546.948 425.982 539.825 442.069 533.486C475.811 519.892 541.702 487.15 554.22 451.492C560.366 432.76 547.361 420.348 531.195 413.821C528.738 412.772 525.935 411.82 523.398 410.973C516.162 408.529 508.998 405.45 502.678 401.495C494.554 396.334 487.423 389.643 485.357 380.351C482.291 364.285 495.365 350.01 506.782 339.967C533.495 317.397 566.573 304.246 598.603 291.04C611.663 285.701 625.036 281.094 638.651 277.356C645.551 275.339 652.345 273.791 659.278 271.579C673.234 267.035 686.463 259.467 696.615 248.706C748.02 193.823 712.501 83.0118 687.604 21.6777C684.839 15.025 682.04 8.44694 678.944 1.9184L670 6.37036C699.164 65.9483 743.564 188.299 691.665 244.003C679.843 256.632 663.795 264 647.116 268.018C640.678 269.654 623.029 274.898 616.273 276.829C588.631 284.342 561.383 293.95 536.167 307.792C514.675 319.665 489.882 335.716 478.891 358.589C469.039 379.813 478.813 398.168 497.657 409.554C505.668 414.492 514.149 417.85 522.924 420.669C524.525 421.214 526.098 421.795 527.64 422.426C539.028 427.065 550.238 434.99 545.661 448.747C537.12 473.038 499.459 496.334 477.387 508.737C448.868 524.091 418.549 537.369 386.923 544.948C388.103 537.977 388.252 530.846 387.06 523.706C383.369 500.843 367.95 488.705 344.919 494.094C328.394 498.017 307.278 512.364 304.46 530.14C302.623 543.665 314.951 551.619 326.533 554.39C327.138 554.526 327.75 554.656 328.366 554.776L327.644 548.757L327.648 548.753C324.575 547.921 321.597 546.79 318.763 545.275C309.055 539.879 307.886 531.361 313.747 522.28C321.152 511.272 333.543 503.605 346.401 500.651C359.922 497.67 371.866 501.837 376.722 515.458C380.065 524.681 380.217 534.509 378.222 543.978C378.01 545 377.77 546.02 377.499 547.026C376.922 549.256 376.227 551.452 375.437 553.611L375.433 553.614C375.404 553.697 375.38 553.762 375.357 553.82C375.309 553.943 375.282 554.011 375.282 554.011C374.077 557.23 372.651 560.353 371.043 563.348C338.405 621.663 256.778 648.094 194.252 657.574C166.77 661.7 138.932 663.453 111.143 663.036L112.905 694.938Z"
+                    fill="#FF9ECB"></path>
+                </mask>
+                <g mask="url(#mask0_377_1052)">
+                  <path class="pink-path path"
+                    d="M104.953 683C208.786 671 416.052 620.6 378.452 511C364.215 469.5 271.953 532.001 331.452 554M382.453 549.5C432.787 539.167 532.952 502.5 551.452 439C535.952 397.5 481.952 429.5 480.452 367C493.452 305.5 662.953 276 690.452 251.5C713.952 223.5 748.452 190.5 673.952 -0.999512"
+                    stroke="#FFB8D9" stroke-width="40"></path>
+                </g>
+              </svg>
+            </div>
+            <div class="hero-swirl cc-three w-embed">
+              <svg viewbox="0 0 426 271" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <mask id="mask0_377_1028" style="mask-type: alpha" maskunits="userSpaceOnUse" x="0" y="0" width="158"
+                  height="128">
+                  <path
+                    d="M0.932312 0.97897C0.932312 0.97897 4.48547 22.2318 4.9978 25.8098C61.6665 26.2725 111.997 86.42 141.546 127.232C145.959 118.274 154.66 120.307 157.866 121.423C88.3896 -2.83034 20.5821 -2.08666 0.932312 0.97897Z"
+                    fill="#FFB8D9"></path>
+                </mask>
+                <g mask="url(#mask0_377_1028)">
+                  <path class="broken-path-four path" d="M-4.54785 14C16.2855 5.66665 91.9521 23.0001 152.952 127"
+                    stroke="#FFB8D9" stroke-width="50"></path>
+                </g>
+                <mask id="mask1_377_1028" style="mask-type: alpha" maskunits="userSpaceOnUse" x="141" y="120"
+                  width="201" height="151">
+                  <path
+                    d="M141.546 127.232C148.685 137.09 154.61 145.816 159.122 152.302C162.989 157.863 166.658 163.557 170.178 169.341C182.548 189.676 231.714 270.887 304.19 270.887C351.951 270.887 341.911 227.976 337.234 213.664H337.226C333.367 212.392 329.558 211.02 325.79 209.558C356.769 301.212 222.889 258.087 178.35 161.772C171.533 147.039 164.691 133.627 157.866 121.423C154.66 120.307 145.959 118.274 141.546 127.232Z"
+                    fill="#735BF6"></path>
+                </mask>
+                <g mask="url(#mask1_377_1028)">
+                  <path class="broken-path-three path"
+                    d="M142.452 111C163.452 157.333 227.952 261.6 293.952 266C349.452 266 334.452 218.5 332.452 204.5"
+                    stroke="#735BF6" stroke-width="50"></path>
+                </g>
+                <mask id="mask2_377_1028" style="mask-type: alpha" maskunits="userSpaceOnUse" x="321" y="134"
+                  width="105" height="46">
+                  <path
+                    d="M321.642 159.731C324.369 167.936 332.549 166.035 336.45 164.581C338.912 161.458 342.399 159.053 347.241 157.822C379.468 149.617 412.396 172.142 422.395 179.794C424.394 179.529 425.452 179.331 425.452 179.331V151.914C381.666 126.422 334.177 129.38 321.642 159.731Z"
+                    fill="#FBC333"></path>
+                </mask>
+                <g mask="url(#mask2_377_1028)">
+                  <path class="broken-path-one path" d="M324.452 169C329.619 152.667 372.452 125.5 436.452 169"
+                    stroke="#FBC333" stroke-width="50"></path>
+                </g>
+                <mask id="mask3_377_1028" style="mask-type: alpha" maskunits="userSpaceOnUse" x="319" y="159" width="18"
+                  height="14">
+                  <path
+                    d="M319.073 168.977C323.618 170.398 328.08 171.663 332.443 172.786C333.277 169.762 334.566 166.961 336.45 164.581C332.55 166.035 324.369 167.936 321.643 159.731C320.461 162.573 319.593 165.655 319.073 168.977Z"
+                    fill="#FEEFC8"></path>
+                </mask>
+                <g mask="url(#mask3_377_1028)">
+                  <path class="broken-path-two path" d="M323.952 176L328.952 161.5" stroke="#FEEFC8" stroke-width="50">
+                  </path>
+                </g>
+              </svg>
+            </div>
+            <div class="hero-swirl cc-four w-embed">
+              <svg viewbox="0 0 525 334" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <mask id="mask0_377_1029" style="mask-type: alpha" maskunits="userSpaceOnUse" x="76" y="6" width="343"
+                  height="246">
+                  <path
+                    d="M76.4407 17.0018C105.469 26.24 141.273 45.7906 181.895 84.5117C212.692 113.871 257.33 190.644 322.848 251.254C319.774 235.967 343.217 240.991 343.762 241.107C311.866 219.59 279.409 188.743 249.785 144.692C254.38 150.939 303.198 214.376 409.586 231.431C397.696 204.832 410.52 186.727 418.279 178.91C375.79 187.372 326.814 184.926 283.813 151.658C207.156 92.3452 156.75 27.5208 84.0924 6.77197C80.9442 7.76355 74.3006 10.6391 76.4407 17.0018Z"
+                    fill="#A1E8DF"></path>
+                </mask>
+                <g mask="url(#mask0_377_1029)">
+                  <path class="path broken-path-four"
+                    d="M72.9521 8C99.7855 17.3333 175.452 56.1 239.452 128.5C303.452 200.9 405.952 208 434.452 203M232.452 120.5C244.952 149.833 297.952 225.5 341.952 254"
+                    stroke="#A1E8DF" stroke-width="55"></path>
+                </g>
+                <mask id="mask1_377_1029" style="mask-type: alpha" maskunits="userSpaceOnUse" x="322" y="240"
+                  width="103" height="78">
+                  <path
+                    d="M322.847 251.254C352.372 278.589 386.135 302.626 424.79 317.558C424.327 316.194 423.823 314.789 423.286 313.36C417.923 299.089 416.469 286.951 418.072 276.977C394.861 269.739 369.501 258.459 343.77 241.107H343.762C343.216 240.991 319.774 235.967 322.847 251.254Z"
+                    fill="#86CEEC"></path>
+                </mask>
+                <g mask="url(#mask1_377_1029)">
+                  <path class="broken-path-three path" d="M312.952 231C329.952 245.5 400.252 293.9 433.452 303.5"
+                    stroke="#86CEEC" stroke-width="50"></path>
+                </g>
+                <mask id="mask2_377_1029" style="mask-type: alpha" maskunits="userSpaceOnUse" x="430" y="280" width="95"
+                  height="54">
+                  <path
+                    d="M434.574 317.078C434.574 317.078 435.293 318.797 436.226 321.664H436.235C463.272 330.613 492.606 335.051 524.452 333.142V290.248C524.452 290.248 523.37 289.314 521.395 287.794C511.182 289.149 476.369 292.347 431.442 280.786C427.187 296.131 434.574 317.078 434.574 317.078Z"
+                    fill="#86CEEC"></path>
+                </mask>
+                <g mask="url(#mask2_377_1029)">
+                  <path class="broken-path-one path" d="M417.452 297.5C430.952 302.167 499.452 314.6 541.452 313"
+                    stroke="#86CEEC" stroke-width="50"></path>
+                </g>
+                <mask id="mask3_377_1029" style="mask-type: alpha" maskunits="userSpaceOnUse" x="417" y="276" width="20"
+                  height="46">
+                  <path
+                    d="M423.286 313.36C423.824 314.789 424.328 316.194 424.79 317.557C428.558 319.02 432.368 320.392 436.227 321.664C435.293 318.797 434.574 317.078 434.574 317.078C434.574 317.078 427.187 296.131 431.442 280.786C427.079 279.663 422.617 278.398 418.072 276.977C416.469 286.951 417.924 299.089 423.286 313.36Z"
+                    fill="#68DACB"></path>
+                </mask>
+                <g mask="url(#mask3_377_1029)">
+                  <path class="broken-path-two path" d="M411.952 296.5L441.452 303.5" stroke="#68DACB"
+                    stroke-width="50"></path>
+                </g>
+                <mask id="mask4_377_1029" style="mask-type: alpha" maskunits="userSpaceOnUse" x="0" y="0" width="85"
+                  height="18">
+                  <path
+                    d="M0.452095 2.83836L11.3595 6.28409L17.4907 9.13488L19.2343 10.2504C32.8933 8.77957 52.3282 9.3332 76.4401 17.0014C74.2999 10.6388 80.9435 7.7632 84.0918 6.77162C59.418 -0.268586 32.1661 -2.22696 0.452095 2.83836Z"
+                    fill="#A1E8DF"></path>
+                </mask>
+                <g mask="url(#mask4_377_1029)">
+                  <path class="broken-path-five path" d="M-0.0478516 7.5C11.1188 4.66666 58.7521 3.1 85.9521 13.5"
+                    stroke="#A1E8DF" stroke-width="40"></path>
+                </g>
+              </svg>
+            </div>
+            <div class="hero-swirl cc-five w-embed">
+              <svg viewbox="0 0 254 276" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <mask id="mask0_368_958" style="mask-type: alpha" maskunits="userSpaceOnUse" x="30" y="8" width="180"
+                  height="267">
+                  <path
+                    d="M170.104 268.978L171.033 274.871C188.126 264.06 202.645 250.879 207.543 235.298C213.63 216.148 201.909 198.549 187.73 186.729C179.448 179.718 169.909 174.292 159.771 170.487C156.934 169.408 152.826 167.862 150.039 166.742C115.663 152.779 80.6181 133.718 57.162 104.343C33.1989 73.1984 39.174 45.715 73.7997 26.9659C81.2205 23.0057 89.142 20.1084 97.2492 17.8605C95.6109 16.3436 93.986 14.6152 93.2916 13.2072L84.753 8.08365C82.3884 8.87381 80.0459 9.72996 77.7286 10.6559C48.4695 22.3551 22.6631 47.8406 32.4811 81.7433C46.2003 126.843 106.649 156.667 147.732 172.643C154.047 175.107 160.868 177.252 166.927 180.316C182.699 188.273 201.116 203.318 203.304 221.829C205.118 240.396 189.481 256.375 170.104 268.978Z"
+                    fill="#FBC333"></path>
+                </mask>
+                <g mask="url(#mask0_368_958)">
+                  <path class="yellow-path path"
+                    d="M170.953 272.5C196.286 258 233.153 219.7 177.953 182.5C108.453 150.999 7.45251 101.999 40.9525 46.4993C64.1522 26.0993 93.1188 10.3333 99.9521 7.5"
+                    stroke="#FBC333" stroke-width="40"></path>
+                </g>
+              </svg>
+            </div>
+            <div class="hero-swirl cc-six w-embed">
+              <svg viewbox="0 0 307 290" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <mask id="mask0_377_1057" style="mask-type: alpha" maskunits="userSpaceOnUse" x="36" y="0" width="217"
+                  height="225">
+                  <path
+                    d="M107.441 212.685C83.9544 215.706 60.3352 217.632 36.6761 218.685L44.2914 224.957C58.6512 224.093 73.0125 222.956 87.3589 221.384C110.037 218.952 132.623 215.561 154.975 210.99C163.616 209.24 172.252 207.327 180.724 204.785C265.278 179.126 264.828 107.98 232.79 38.3261C227.227 26.2591 220.956 14.5107 213.874 3.2622C213.387 2.49858 212.921 1.76897 212.385 0.968628L205.402 5.79764C209.276 11.4256 212.896 17.2952 216.286 23.2384C229.763 47.1237 240.758 72.9444 244.845 100.167C251.596 146.259 232.323 179.335 188.655 195.609C177.386 199.964 165.586 202.608 153.754 205.007C138.471 208.16 122.905 210.671 107.441 212.685Z"
+                    fill="#FF6600"></path>
+                </mask>
+                <g mask="url(#mask0_377_1057)">
+                  <path class="red-path path" d="M35.4521 224C142.952 221 322.452 195 210.452 -0.5" stroke="#FF6600"
+                    stroke-width="40"></path>
+                </g>
+              </svg>
+            </div>
+            <div class="hero-swirl cc-seven w-embed">
+              <svg viewbox="0 0 298 277" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <mask id="mask0_368_956" style="mask-type: alpha" maskunits="userSpaceOnUse" x="0" y="159" width="119"
+                  height="25">
+                  <path
+                    d="M0.406214 181.568C1.58926 182.14 3.26356 182.915 4.82963 183.488C5.7673 182.631 6.72651 181.809 7.71182 181.01C28.5529 164.113 57.9566 162.061 83.6172 164.606C92.0093 165.437 100.334 166.712 108.64 168.138L118.619 165.279C102.855 162.421 87.0729 159.714 71.0332 159.309C45.926 158.676 18.9055 163.644 0.406214 181.568Z"
+                    fill="#68DACB"></path>
+                </mask>
+                <g mask="url(#mask0_368_956)">
+                  <path class="blue-path path" d="M2.95215 183.5C13.4521 167.5 56.9521 151.9 118.952 167.5"
+                    stroke="#68DACB" stroke-width="40"></path>
+                </g>
+                <mask id="mask1_368_956" style="mask-type: alpha" maskunits="userSpaceOnUse" x="124" y="131" width="97"
+                  height="46">
+                  <path
+                    d="M133.654 167.975L124.399 170.942C138.618 173.488 152.848 175.914 167.293 176.701C180.228 177.406 194.274 177.079 205.857 170.529C211.163 167.529 215.603 163.288 218.107 157.665C220.7 151.859 221.025 144.88 216.884 139.705C213.781 135.829 209.328 133.779 204.82 131.843C203.884 132.977 202.588 134.466 201.68 135.492C206.283 137.459 212.133 139.484 214.512 144.255C217.235 149.712 214.495 156.532 210.858 160.875C207.011 165.482 201.243 168.275 195.595 169.965C182.541 173.875 168.277 172.648 154.942 171.128C147.821 170.317 140.734 169.201 133.654 167.975Z"
+                    fill="#68DACB"></path>
+                </mask>
+                <g mask="url(#mask1_368_956)">
+                  <path class="blue-path path"
+                    d="M126.452 168.5C153.952 174.667 211.452 181.5 217.452 153.5C220.452 139.5 209.452 137.5 200.452 131.124"
+                    stroke="#68DACB" stroke-width="40"></path>
+                </g>
+                <mask id="mask2_368_956" style="mask-type: alpha" maskunits="userSpaceOnUse" x="183" y="72" width="99"
+                  height="61">
+                  <path
+                    d="M190.067 101.91C192.99 96.1107 198.05 91.5395 203.384 87.9847C213.844 81.0216 226.571 78.3713 238.937 77.5383C252.218 76.6444 265.567 77.8361 278.777 79.1811C281.662 79.47 282.09 74.9949 279.209 74.7028C275.941 74.3735 272.669 74.0543 269.396 73.7743C244.228 71.6377 214.577 71.0732 194.563 89.1384C189.596 93.6263 185.424 99.2907 183.834 105.882C182.317 112.153 183.19 118.954 186.592 124.479C188.751 127.987 191.795 130.416 195.205 132.363C196.625 131.102 197.63 129.918 198.338 128.901C194.512 126.896 191.164 124.31 189.235 119.888C186.698 114.07 187.239 107.509 190.067 101.91Z"
+                    fill="#68DACB"></path>
+                </mask>
+                <g mask="url(#mask2_368_956)">
+                  <path class="blue-path path"
+                    d="M280.453 77.0003C257.953 74 217.453 69.0004 189.453 98.0003C180.324 122.597 189.585 127.518 199.953 130.959"
+                    stroke="#68DACB" stroke-width="40"></path>
+                </g>
+              </svg>
+            </div>
+            <div data-star-shrink="" class="c-star cc-one w-embed">
+              <svg viewbox="0 0 26 26" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path
+                  d="M25.0589 7.87599L21.2762 10.9039C18.4057 13.2139 16.9354 16.8193 17.3397 20.4597L17.8811 25.2727L14.8535 21.4922C12.5444 18.6221 8.93878 17.1518 5.29972 17.5544L0.484375 18.0968L4.26715 15.0692C7.13764 12.7588 8.6046 9.1535 8.2036 5.51343L7.66225 0.700439L10.6898 4.48053C12.9989 7.35101 16.6045 8.82101 20.2436 8.41867L25.0589 7.87599Z"
+                  fill="#FAEFCB"></path>
+              </svg>
+            </div>
+            <div data-star-expand="" class="c-star cc-two w-embed">
+              <svg viewbox="0 0 26 26" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path
+                  d="M25.0589 7.87599L21.2762 10.9039C18.4057 13.2139 16.9354 16.8193 17.3397 20.4597L17.8811 25.2727L14.8535 21.4922C12.5444 18.6221 8.93878 17.1518 5.29972 17.5544L0.484375 18.0968L4.26715 15.0692C7.13764 12.7588 8.6046 9.1535 8.2036 5.51343L7.66225 0.700439L10.6898 4.48053C12.9989 7.35101 16.6045 8.82101 20.2436 8.41867L25.0589 7.87599Z"
+                  fill="#FAEFCB"></path>
+              </svg>
+            </div>
+          </div>
+        </section>
+        <div class="hero-hand_illustration">
+          <div data-star-shrink="" class="c-star cc-three w-embed">
+            <svg viewbox="0 0 26 26" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path
+                d="M25.0589 7.87599L21.2762 10.9039C18.4057 13.2139 16.9354 16.8193 17.3397 20.4597L17.8811 25.2727L14.8535 21.4922C12.5444 18.6221 8.93878 17.1518 5.29972 17.5544L0.484375 18.0968L4.26715 15.0692C7.13764 12.7588 8.6046 9.1535 8.2036 5.51343L7.66225 0.700439L10.6898 4.48053C12.9989 7.35101 16.6045 8.82101 20.2436 8.41867L25.0589 7.87599Z"
+                fill="#FAEFCB"></path>
+            </svg>
+          </div>
+          <div class="hero-hand-swirl w-embed">
+            <svg viewbox="0 0 85 171" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <mask id="mask0_451_727" style="mask-type: alpha" maskunits="userSpaceOnUse" x="0" y="0" width="85"
+                height="171">
+                <path
+                  d="M1.53519 156.094C15.0121 163.463 29.5918 171.269 45.4479 170.096C52.3952 169.571 59.2925 167.489 64.8931 163.202C70.9114 158.597 74.6774 151.897 77.0567 144.806C88.171 111.73 68.4118 79.1058 68.0242 46.0969C67.8504 30.9759 72.1912 14.9977 84.0909 4.91694C86.664 2.72915 82.938 -0.963704 80.3817 1.2067C70.1428 9.88733 65.0134 22.8035 63.3693 35.8614C61.411 51.3299 64.8229 66.8386 68.3918 81.8192C72.1378 97.5885 76.2514 113.618 74.8144 129.966C74.1494 137.561 72.1545 145.384 68.1111 151.931C64.4186 157.899 58.7845 161.905 52.0477 163.727C35.0888 168.328 18.6712 159.473 4.23194 151.563C1.27457 149.936 -1.3854 154.467 1.58867 156.094H1.53519Z"
+                  fill="#BCDFF0"></path>
+              </mask>
+              <g mask="url(#mask0_451_727)">
+                <path class="hero-hand_swirl"
+                  d="M86.4996 1C77.333 10.3333 60.9996 38.8 68.9996 78C78.9996 127 87.5 197.5 -1 152" stroke="#BCDFF0"
+                  stroke-width="20"></path>
+              </g>
+            </svg>
+          </div>
+        </div>
+        <section class="c-more">
+          <div class="more-header">
+            <h2 class="heading-h2">Get more with peppermint</h2>
+            <div class="more-header_line w-embed">
+              <svg viewbox="0 0 339 35" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path class="more-line_path"
+                  d="M4.95654 30.4723C13.1317 24.7797 22.7232 15.7524 32.7452 13.6973C44.4301 11.3013 53.9819 19.9341 63.9388 24.4812C77.4861 30.668 90.5522 14.2749 99.9652 6.73633C104.381 3.2002 113.545 5.78887 117.814 6.5081C135.981 9.56883 154.007 14.0087 171.579 19.6884C185.232 24.1015 196.888 19.23 209.692 13.4691C223.094 7.43913 237.646 13.479 250.881 17.292C256.054 18.7826 260.488 20.0065 265.599 17.5773C270.737 15.1348 274.583 9.70301 280.317 8.56217C293.993 5.84129 307.646 18.114 318.76 24.4242C324.346 27.5957 327.989 29.8377 334.137 28.4182"
+                  stroke="#FF9ECB" stroke-width="8.36617" stroke-linecap="round"></path>
+              </svg>
+            </div>
+          </div>
+          <div class="more-cards_container">
+            <div class="more-card cc-one">
+              <div class="more-card_image cc-lg">
+                <img src="images/ribbon-illustration.svg" loading="lazy" alt="" class="c-img" />
+              </div>
+              <div class="more-card_details">
+                <div class="more-card_header">More reliability</div>
+                <div>
+                  Enjoy zero downtime with our lightning-fast contactless
+                  cards and readers. Customers never waste a second and you
+                  never lose a sale.
+                </div>
+              </div>
+            </div>
+            <div class="more-card cc-two">
+              <div class="more-card_image">
+                <img src="images/card-touch-illustration.svg" loading="lazy" alt="" class="c-img" />
+              </div>
+              <div class="more-card_details">
+                <div class="more-card_header">More revenue</div>
+                <div>
+                  Centralize the payment experience and capture every kobo
+                  that moves through your ecosystem with a single integration.
+                </div>
+              </div>
+            </div>
+            <div class="more-card cc-three">
+              <div class="more-card_image">
+                <img src="images/lock-illustration.svg" loading="lazy" alt="" class="c-img" />
+              </div>
+              <div class="more-card_details">
+                <div class="more-card_header">More control</div>
+                <div>
+                  Virtual and physical card issuing; submerchant collections;
+                  instant settlements – everything they said was impossible
+                  from a simple dashboard.
+                </div>
+              </div>
+            </div>
+            <div class="more-card cc-four">
+              <div class="more-card_image">
+                <img src="images/card-wings-illustration.svg" loading="lazy" alt="" class="c-img" />
+              </div>
+              <div class="more-card_details">
+                <div class="more-card_header">More loyalty</div>
+                <div>
+                  Flex on ‘em with branded cards and rewards programs that
+                  keep you top of your customers’ minds – and wallets!
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+      <section class="c-usecases">
+        <div class="c-section cc-usecases">
+          <div class="usecases-illustration_container">
+            <div data-hand-anim="" class="usecase-left_hand">
+              <div class="left-hand_swirl w-embed">
+                <svg viewbox="0 0 146 202" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <mask id="mask0_451_733" style="mask-type: alpha" maskunits="userSpaceOnUse" x="12" y="35" width="109"
+                    height="149">
+                    <path
+                      d="M57.2653 183.314C43.1368 177.077 28.2745 170.282 19.2717 157.126C15.6197 151.806 13.2508 145.758 12.8455 139.515C12.3912 132.53 14.9975 125.876 18.6023 120.229C34.8474 94.7944 68.1476 90.6351 92.0281 74.7383C104.361 66.5271 114.9 54.0038 114.902 38.3065C114.906 34.537 120.886 35.0744 120.883 38.849C120.883 52.1188 114.103 63.7214 104.842 72.4328C94.8247 81.8467 81.8405 87.5856 69.1686 93.0356C56.4954 98.4805 42.9604 104.124 32.4982 113.474C22.9888 121.969 15.1071 134.689 20.8746 148.155C27.5589 163.764 44.255 171.346 58.9544 177.829C62.5451 179.403 60.8968 184.936 57.3 183.337L57.2653 183.314Z"
+                      fill="#BCDFF0"></path>
+                  </mask>
+                  <g mask="url(#mask0_451_733)">
+                    <path class="left-hand_path"
+                      d="M62.9993 182.5C39.1658 173.833 -3.201 150.3 17.9993 125.5C44.4997 94.5001 110.5 87.5 117 32"
+                      stroke="#BCDFF0" stroke-width="30"></path>
+                  </g>
+                </svg>
+              </div>
+              <div data-star-shrink="" class="c-star cc-four cc-hide-desktop"></div>
+            </div>
+            <div data-hand-anim="" class="usecase-right_hand">
+              <div class="right-hand-swirl w-embed">
+                <svg viewbox="0 0 439 478" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <mask id="mask0_451_730" style="mask-type: alpha" maskunits="userSpaceOnUse" x="1" y="86" width="394"
+                    height="266">
+                    <path
+                      d="M393.812 333.974C385.261 350.323 363.757 354.821 345.999 349.808C323.747 343.534 307.639 323.549 295.999 304.758C273.748 268.874 261.984 228.613 246.104 190.193C238.181 171.017 229.155 152.106 217.402 134.69C205.65 117.278 190.65 100.879 170.758 94.4051C151.627 88.1773 132.727 95.6792 117.287 105.223C104.067 113.395 92.2623 123.771 80.9882 134.279C56.488 157.097 34.2343 182.141 12.1139 207.204C10.0451 209.55 7.96388 211.908 5.89393 214.249C3.54159 216.915 -0.422801 212.435 1.9336 209.796C23.3293 185.63 44.6068 161.313 67.7072 138.722C79.4424 127.248 91.6272 116.072 104.984 106.408C118.298 96.7767 134.024 87.8502 151.21 86.4872C171.982 84.8259 191.028 96.2109 205.568 111.095C220.204 126.086 231.078 144.631 240.132 163.092C258.526 200.563 269.508 240.677 287.83 278.191C297.358 297.711 308.878 318.546 326.194 332.699C334.63 339.606 344.51 344.803 355.242 345.849C364.16 346.727 373.625 345.088 380.738 340.028C384.216 337.563 386.915 334.435 388.894 330.665C390.557 327.489 395.496 330.837 393.844 333.996L393.812 333.974Z"
+                      fill="#BCDFF0"></path>
+                  </mask>
+                  <g mask="url(#mask0_451_730)">
+                    <path class="right-hand_path"
+                      d="M1 213.269C43.5 157.435 138.7 55.2682 179.5 93.2683C230.5 140.768 292.001 310.269 309.501 321.769C327.001 333.269 357.001 370.269 402.501 321.769"
+                      stroke="#BCDFF0" stroke-width="30"></path>
+                  </g>
+                </svg>
+              </div>
+            </div>
+          </div>
+          <div class="usecase-shape"></div>
+        </div>
+      </section>
+      <div class="usecases-inner">
+        <div class="usecase-header">
+          <div>Built for you</div>
+          <div class="usecase-cover"></div>
+          <div data-star-shrink="" class="c-star cc-four cc-hide-mobile"></div>
+        </div>
+        <div class="usecase-slide_wrapper">
+          <div class="usecase-slide_container swiper">
+            <div id="scrollbar" class="usecase-slide_inner swiper-wrapper">
+              <div class="usecase-slide swiper-slide">
+                <div class="usecase-slide_img">
+                  <img src="images/membership_2.webp" loading="lazy"
+                    sizes="(max-width: 479px) 79vw, (max-width: 991px) 80vw, 74vw" srcset="
+                        images/membership_2-p-500.webp   500w,
+                        images/membership_2-p-800.webp   800w,
+                        images/membership_2-p-1080.webp 1080w,
+                        images/membership_2.webp        1600w
+                      " alt="" class="c-img cc-cover" />
+                  <div class="image-overlay"></div>
+                  <div class="swiper-one-illustration cc-one cc-slide-one w-embed">
+                    <svg viewbox="0 0 526 155" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <mask id="mask0_679_1945" style="mask-type: alpha" maskunits="userSpaceOnUse" x="0" y="-30"
+                        width="526" height="185">
+                        <path
+                          d="M525.737 74.9268C329.366 99.227 119.854 174.692 41.0301 149.216C-37.8065 123.725 4.51382 57.4619 104.993 -29.0693C104.359 -27.9984 103.764 -26.9275 103.182 -25.8699C94.3635 -9.76672 90.8996 4.32685 92.8035 16.2786C32.5555 120.817 332.817 44.4922 332.817 44.4922C403.496 26.3794 467.459 10.8316 525.341 -2.48196C496.268 16.2125 521.136 66.2407 525.737 74.9268Z"
+                          fill="#68DACB"></path>
+                      </mask>
+                      <g mask="url(#mask0_679_1945)">
+                        <path class="first-slide-one"
+                          d="M107.214 -19.5957C-0.610089 71.764 -17.7176 200.39 569.233 34.6177" stroke="#091C4B"
+                          stroke-width="132.522"></path>
+                      </g>
+                    </svg>
+                  </div>
+                  <div class="swiper-one-illustration cc-two cc-slide-one w-embed">
+                    <svg viewbox="0 0 656 70" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <mask id="mask0_770_18" style="mask-type: alpha" maskunits="userSpaceOnUse" x="0" y="-252"
+                        width="979" height="322">
+                        <path
+                          d="M978.555 -94.1149V-82.5862C959.543 -91.55 931.885 -96.3624 895.963 -96.9706C853.603 -97.6581 800.561 -92.7399 733.848 -81.8722C611.157 -61.8953 466.586 -25.5773 339.043 6.47031C256.095 27.3065 177.76 46.9926 119.734 58.4155C79.7005 66.2952 54.3691 69.1774 38.0409 69.1774C19.5315 69.1774 12.6037 65.4755 8.98115 61.1919C4.40669 55.7845 1.57741 49.6632 0.506509 42.828C-1.39731 30.8762 2.06658 16.7827 10.885 0.679535C11.4667 -0.378143 12.0616 -1.44904 12.6962 -2.51994C22.9557 -20.1435 39.4427 -40.16 61.7729 -62.0804C90.6078 -90.3733 123.621 -115.718 159.899 -137.414C196.124 -159.07 267.015 -201.641 349.17 -252L349.382 -249.792L350.268 -240.26C307.485 -214.043 267.623 -189.861 233.672 -169.382C206.622 -153.067 183.34 -139.106 165.32 -128.331C129.768 -107.071 97.4166 -82.2424 69.1766 -54.5313C60.5301 -46.0434 53.0867 -38.1637 46.6878 -30.826C46.6878 -30.826 46.6825 -30.8221 46.6745 -30.8128C25.0182 -6.01028 15.3669 12.4065 12.1674 25.9713C8.8225 40.2102 12.5905 49.0947 17.0459 54.3567C20.7081 58.6799 38.649 63.6114 117.684 48.037C175.447 36.667 253.662 17.0207 336.465 -3.78917C464.206 -35.8765 609.015 -72.2606 732.142 -92.3168C852.691 -111.937 933.842 -112.585 978.555 -94.1149Z"
+                          fill="#FBC333"></path>
+                      </mask>
+                      <g mask="url(#mask0_770_18)">
+                        <path class="slide-path"
+                          d="M982.325 -90.0292C936.143 -96.4545 836.31 -107.378 806.433 -99.6672C776.555 -91.9568 307.267 11.9724 76.3584 62.9731C14.3142 73.2135 -65.1983 57.4313 115.513 -104.486C289.96 -205.684 354.253 -246.847 364.292 -252.669"
+                          stroke="#FBC333" stroke-width="36.1423"></path>
+                      </g>
+                    </svg>
+                  </div>
+                </div>
+                <div class="usecase-description_container">
+                  <div class="usecase-description">Membership Programs</div>
+                </div>
+              </div>
+              <div class="usecase-slide swiper-slide">
+                <div class="usecase-slide_img">
+                  <img src="images/membership_1.webp" loading="lazy"
+                    sizes="(max-width: 479px) 79vw, (max-width: 991px) 80vw, 74vw" srcset="
+                        images/membership_1membership.webp  500w,
+                        images/membership_1membership.webp  800w,
+                        images/membership_1membership.webp 1080w,
+                        images/membership_1membership.webp 1600w,
+                        images/membership_1.webp           2116w
+                      " alt="" class="c-img cc-cover" />
+                  <div class="image-overlay"></div>
+                  <div class="swiper-one-illustration cc-one cc-slide-four w-embed">
+                    <svg viewbox="0 0 814 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <mask id="mask0_679_1891" style="mask-type: alpha" maskunits="userSpaceOnUse" x="0" y="-208"
+                        width="814" height="268">
+                        <path
+                          d="M0.919678 -76.5197V-66.9503C16.7004 -74.3908 39.6583 -78.3853 69.4749 -78.8902C104.636 -79.4608 148.664 -75.3784 204.039 -66.3577C305.879 -49.7758 425.881 -19.63 531.748 6.97125C600.6 24.2664 665.621 40.6069 713.787 50.0885C747.016 56.6291 768.043 59.0214 781.596 59.0214C796.96 59.0214 802.71 55.9487 805.717 52.3931C809.514 47.9047 811.863 42.8237 812.751 37.15C814.332 27.2294 811.457 15.5311 804.137 2.1646C803.654 1.28667 803.16 0.397766 802.633 -0.491135C794.117 -15.1196 780.432 -31.7344 761.897 -49.9295C737.963 -73.4141 710.56 -94.4514 680.447 -112.46C650.378 -130.436 591.535 -165.772 523.342 -207.573L523.166 -205.74L522.431 -197.828C557.943 -176.066 591.03 -155.994 619.212 -138.996C641.665 -125.454 660.99 -113.865 675.948 -104.921C705.457 -87.2744 732.311 -66.665 755.752 -43.6633C762.929 -36.6179 769.107 -30.0773 774.419 -23.9867C774.419 -23.9867 774.423 -23.9834 774.43 -23.9757C792.405 -3.38831 800.417 11.8986 803.072 23.1581C805.849 34.9772 802.721 42.3518 799.023 46.7195C795.983 50.308 781.091 54.4013 715.488 41.4738C667.542 32.0361 602.619 15.7286 533.888 -1.54466C427.856 -28.1788 307.657 -58.3795 205.455 -75.0273C105.393 -91.3128 38.0341 -91.8506 0.919678 -76.5197Z"
+                          fill="#FBC333"></path>
+                      </mask>
+                      <g mask="url(#mask0_679_1891)">
+                        <path class="slide-path"
+                          d="M-2.20959 -73.1285C36.1237 -78.4618 118.99 -87.5285 143.79 -81.1285C168.59 -74.7285 558.124 11.5382 749.79 53.8716C801.29 62.3716 867.29 49.2716 717.29 -85.1284C572.49 -169.128 519.124 -203.295 510.79 -208.128"
+                          stroke="#FBC333" stroke-width="30"></path>
+                      </g>
+                    </svg>
+                  </div>
+                  <div class="swiper-one-illustration cc-two cc-slide-four w-embed">
+                    <svg viewbox="0 0 437 152" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <mask id="mask0_679_1873" style="mask-type: alpha" maskunits="userSpaceOnUse" x="0" y="-1"
+                        width="437" height="153">
+                        <path
+                          d="M0.392517 85.8301C163.391 106.001 337.297 168.641 402.725 147.494C468.163 126.336 433.035 71.3333 349.632 -0.492188C350.159 0.396715 350.653 1.28562 351.136 2.16354C358.455 15.53 361.331 27.2284 359.75 37.149C409.759 123.921 160.527 60.5677 160.527 60.5677C101.859 45.5332 48.7664 32.6277 0.721741 21.5767C24.8538 37.0941 4.21152 78.6201 0.392517 85.8301Z"
+                          fill="#68DACB"></path>
+                      </mask>
+                      <g mask="url(#mask0_679_1873)">
+                        <path class="second-slide-one"
+                          d="M347.788 7.37158C437.288 83.2049 451.488 189.972 -35.7117 52.3716" stroke="#FF9ECB"
+                          stroke-width="110"></path>
+                      </g>
+                    </svg>
+                  </div>
+                </div>
+                <div class="usecase-description_container">
+                  <div class="usecase-description">Loyalty &amp; Rewards</div>
+                </div>
+              </div>
+              <div class="usecase-slide swiper-slide">
+                <div class="usecase-slide_img">
+                  <img src="images/events.webp" loading="lazy"
+                    sizes="(max-width: 479px) 79vw, (max-width: 991px) 80vw, 74vw" srcset="
+                        images/events-p-500.webp   500w,
+                        images/events-p-800.webp   800w,
+                        images/events-p-1080.webp 1080w,
+                        images/events-p-1600.webp 1600w,
+                        images/events.webp        2000w
+                      " alt="" class="c-img cc-cover" />
+                  <div class="image-overlay"></div>
+                  <div class="swiper-one-illustration cc-one cc-slide-three w-embed">
+                    <svg viewbox="0 0 793 84" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <mask id="mask0_770_12" style="mask-type: alpha" maskunits="userSpaceOnUse" x="0" y="-184"
+                        width="813" height="268">
+                        <path
+                          d="M812.44 -52.4384V-42.869C796.659 -50.3095 773.701 -54.304 743.884 -54.8089C708.723 -55.3795 664.695 -51.2971 609.32 -42.2764C507.48 -25.6945 387.478 4.45131 281.611 31.0526C212.76 48.3477 147.738 64.6882 99.5727 74.1698C66.3431 80.7104 45.3168 83.1027 31.7634 83.1027C16.3997 83.1027 10.6492 80.03 7.64233 76.4744C3.84529 71.986 1.49683 66.905 0.607929 61.2313C-0.972342 51.3107 1.90287 39.6124 9.2226 26.2459C9.70546 25.368 10.1993 24.4791 10.726 23.5902C19.242 8.96169 32.927 -7.65312 51.4623 -25.8482C75.3968 -49.3328 102.799 -70.3701 132.912 -88.3789C162.981 -106.354 221.824 -141.691 290.017 -183.491L290.193 -181.659L290.928 -173.746C255.416 -151.985 222.329 -131.913 194.148 -114.914C171.695 -101.372 152.369 -89.7835 137.411 -80.8397C107.902 -63.1931 81.0485 -42.5837 57.6078 -19.582C50.4307 -12.5366 44.2523 -5.99603 38.9408 0.0946045C38.9408 0.0946045 38.9364 0.0978851 38.9298 0.105576C20.9539 20.693 12.9428 35.9799 10.2871 47.2393C7.51064 59.0585 10.6383 66.4331 14.3365 70.8008C17.3764 74.3893 32.2682 78.4826 97.8718 65.5551C145.818 56.1174 210.74 39.8099 279.471 22.5366C385.503 -4.0975 505.702 -34.2982 607.904 -50.946C707.966 -67.2315 775.325 -67.7693 812.44 -52.4384Z"
+                          fill="#FBC333"></path>
+                      </mask>
+                      <g mask="url(#mask0_770_12)">
+                        <path class="slide-path"
+                          d="M815.569 -49.0472C777.236 -54.3805 694.369 -63.4472 669.569 -57.0472C644.769 -50.6472 255.236 35.6195 63.5689 77.9529C12.0689 86.4529 -53.9306 73.3529 96.0694 -61.0471C240.87 -145.047 294.236 -179.214 302.569 -184.047"
+                          stroke="#FBC333" stroke-width="30"></path>
+                      </g>
+                    </svg>
+                  </div>
+                  <div class="swiper-one-illustration cc-two cc-slide-three w-embed">
+                    <svg viewbox="0 0 438 154" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <mask id="mask0_445_516" style="mask-type: alpha" maskunits="userSpaceOnUse" x="0" y="0"
+                        width="438" height="154">
+                        <path
+                          d="M437.186 87.1614C274.187 107.332 100.281 169.972 34.8532 148.825C-30.5854 127.667 4.54278 72.6646 87.946 0.839111C87.4192 1.72801 86.9254 2.61691 86.4425 3.49484C79.1228 16.8613 76.2476 28.5597 77.8278 38.4803C27.8188 125.253 277.051 61.899 277.051 61.899C335.719 46.8645 388.812 33.959 436.856 22.908C412.724 38.4254 433.367 79.9514 437.186 87.1614Z"
+                          fill="#68DACB"></path>
+                      </mask>
+                      <g mask="url(#mask0_445_516)">
+                        <path class="third-slide-one"
+                          d="M89.79 8.70288C0.289967 84.5362 -13.9102 191.303 473.29 53.7029" stroke="#68DACB"
+                          stroke-width="110"></path>
+                      </g>
+                    </svg>
+                  </div>
+                </div>
+                <div class="usecase-description_container">
+                  <div class="usecase-description">
+                    Events &amp; Festivals
+                  </div>
+                </div>
+              </div>
+              <div class="usecase-slide swiper-slide">
+                <div class="usecase-slide_img">
+                  <img src="images/memberships-programs.png" loading="lazy"
+                    sizes="(max-width: 479px) 79vw, (max-width: 991px) 80vw, 74vw" srcset="
+                        images/memberships-programs-p-500.png   500w,
+                        images/memberships-programs-p-800.png   800w,
+                        images/memberships-programs-p-1080.png 1080w,
+                        images/memberships-programs.png        1587w
+                      " alt="" class="c-img cc-cover" />
+                  <div class="image-overlay"></div>
+                  <div class="swiper-one-illustration cc-one cc-slide-two w-embed">
+                    <svg viewbox="0 0 794 267" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <mask id="mask0_445_534" style="mask-type: alpha" maskunits="userSpaceOnUse" x="0" y="0"
+                        width="813" height="267">
+                        <path
+                          d="M812.87 131.109V140.678C797.09 133.238 774.132 129.243 744.315 128.738C709.154 128.168 665.126 132.25 609.751 141.271C507.911 157.853 387.909 187.998 282.042 214.6C213.19 231.895 148.169 248.235 100.003 257.717C66.7738 264.258 45.7474 266.65 32.1941 266.65C16.8303 266.65 11.0799 263.577 8.07299 260.021C4.27595 255.533 1.9275 250.452 1.03859 244.778C-0.541678 234.858 2.33354 223.159 9.65326 209.793C10.1361 208.915 10.63 208.026 11.1567 207.137C19.6726 192.509 33.3577 175.894 51.8929 157.699C75.8274 134.214 103.23 113.177 133.343 95.1683C163.412 77.1927 222.255 41.8561 290.448 0.0556641L290.624 1.88832L291.359 9.80068C255.847 31.5623 222.76 51.634 194.578 68.6329C172.125 82.1749 152.8 93.7636 137.842 102.707C108.333 120.354 81.4791 140.963 58.0384 163.965C50.8614 171.011 44.6829 177.551 39.3715 183.642C39.3715 183.642 39.3671 183.645 39.3605 183.653C21.3846 204.24 13.3735 219.527 10.7178 230.786C7.94131 242.606 11.0689 249.98 14.7672 254.348C17.807 257.936 32.6989 262.03 98.3024 249.102C146.248 239.665 211.171 223.357 279.902 206.084C385.934 179.45 506.133 149.249 608.335 132.601C708.397 116.316 775.756 115.778 812.87 131.109Z"
+                          fill="#FBC333"></path>
+                      </mask>
+                      <g mask="url(#mask0_445_534)">
+                        <path class="slide-path"
+                          d="M816 134.5C777.666 129.167 694.8 120.1 670 126.5C645.2 132.9 255.666 219.167 63.9996 261.5C12.4996 270 -53.5 256.9 96.5 122.5C241.3 38.5 294.666 4.33333 303 -0.5"
+                          stroke="#FBC333" stroke-width="30"></path>
+                      </g>
+                    </svg>
+                  </div>
+                  <div class="swiper-one-illustration cc-two cc-slide-two w-embed">
+                    <svg viewbox="0 0 870 431" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <mask id="mask0_762_465" style="mask-type: alpha" maskunits="userSpaceOnUse" x="0" y="0"
+                        width="889" height="869">
+                        <path fill-rule="evenodd" clip-rule="evenodd"
+                          d="M203.394 120.628C203.833 113.418 197.523 113.517 193.627 114.252C218.045 96.3312 243.878 77.8947 270.578 59.1289C298.759 42.13 331.846 22.0584 367.359 0.296753L367.896 5.98135C308.34 46.5855 251.022 85.7302 203.394 120.628ZM203.394 120.629H203.383C172.414 143.302 145.56 164.185 124.841 182.49C107.897 197.459 95.4193 210.299 86.7168 221.284C89.3725 210.024 97.3836 194.737 115.36 174.15L115.371 174.139C138.987 155.055 165.358 134.994 193.627 114.253C197.523 113.518 203.833 113.419 203.394 120.629ZM753.856 399.018C703.408 280.125 573.771 266.956 436.397 283.955C434.378 280.143 427.655 266.737 425.335 252.654C427.655 266.737 434.377 280.144 436.397 283.956C370.932 292.057 303.708 307.008 242.459 320.631C151.205 340.927 73.2143 358.273 34.0642 345.619C-31.3744 324.461 3.75372 269.459 87.1569 197.634C86.6301 198.522 86.1363 199.411 85.6535 200.289C78.3337 213.656 75.4585 225.354 77.0388 235.275C27.0298 322.047 276.262 258.693 276.262 258.693C334.929 243.659 388.021 230.754 436.065 219.703L436.068 219.701C686.273 162.132 799.351 154.812 849.712 158.093L849.714 158.092C882.954 160.254 888.869 167.036 888.869 167.036V310.567C882.482 298.583 855.618 286.698 828.347 277.337C796.5 266.407 764.128 258.912 763.195 258.703C795.272 280.487 822.016 319.84 842.889 367.424C865.023 417.938 880.563 477.703 888.87 535.624V868.776H718.914L747.194 729.69C785.757 573.561 783.255 468.331 753.856 399.018Z"
+                          fill="#735BF6"></path>
+                      </mask>
+                      <g mask="url(#mask0_762_465)">
+                        <path class="fourth-slide-one"
+                          d="M367.933 3.25671L187.986 126.577L68.4411 220.955C36.7721 249.687 -9.9555 307.027 56.4864 306.524C139.539 305.895 577.117 212.832 638.451 233.982M638.451 233.982C687.518 250.902 794.36 407.304 835.249 464.408M638.451 233.982C693.44 214.722 866.439 198.181 918.89 233.982"
+                          stroke="#735AF4" stroke-width="160"></path>
+                      </g>
+                    </svg>
+                  </div>
+                </div>
+                <div class="usecase-description_container">
+                  <div class="usecase-description">Campus Experiences</div>
+                </div>
+              </div>
+              <div class="usecase-slide swiper-slide">
+                <div class="usecase-slide_img">
+                  <img src="images/leisure.webp" loading="lazy"
+                    sizes="(max-width: 479px) 87vw, (max-width: 767px) 88vw, (max-width: 991px) 80vw, 74vw" srcset="
+                        images/leisure-p-500.webp   500w,
+                        images/leisure-p-800.webp   800w,
+                        images/leisure-p-1080.webp 1080w,
+                        images/leisure-p-1600.webp 1600w,
+                        images/leisure.webp        2000w
+                      " alt="" class="c-img cc-cover" />
+                  <div class="image-overlay"></div>
+                  <div class="swiper-one-illustration cc-one cc-slide-five w-embed">
+                    <svg viewbox="0 0 240 267" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <mask id="mask0_770_24" style="mask-type: alpha" maskunits="userSpaceOnUse" x="-573" y="-1"
+                        width="813" height="268">
+                        <path
+                          d="M-572.514 130.648V140.217C-556.733 132.777 -533.775 128.782 -503.959 128.277C-468.798 127.706 -424.77 131.789 -369.394 140.81C-267.554 157.391 -147.553 187.537 -41.6854 214.139C27.1661 231.434 92.1877 247.774 140.353 257.256C173.583 263.796 194.609 266.189 208.162 266.189C223.526 266.189 229.277 263.116 232.283 259.56C236.08 255.072 238.429 249.991 239.318 244.317C240.898 234.397 238.023 222.698 230.703 209.332C230.22 208.454 229.726 207.565 229.2 206.676C220.684 192.048 206.999 175.433 188.464 157.238C164.529 133.753 137.127 112.716 107.014 94.7071C76.9447 76.7316 18.1015 41.3949 -50.0916 -0.405457L-50.2672 1.4272L-51.0024 9.33956C-15.4902 31.1012 17.5967 51.1729 45.7782 68.1717C68.2312 81.7138 87.5566 93.3024 102.514 102.246C132.024 119.893 158.877 140.502 182.318 163.504C189.495 170.549 195.674 177.09 200.985 183.181C200.985 183.181 200.989 183.184 200.996 183.192C218.972 203.779 226.983 219.066 229.639 230.325C232.415 242.144 229.288 249.519 225.589 253.887C222.549 257.475 207.658 261.569 142.054 248.641C94.1082 239.203 29.1854 222.896 -39.5455 205.623C-145.577 178.988 -265.777 148.788 -367.979 132.14C-468.04 115.854 -535.399 115.317 -572.514 130.648Z"
+                          fill="#FBC333"></path>
+                      </mask>
+                      <g mask="url(#mask0_770_24)">
+                        <path class="slide-path"
+                          d="M-575.643 134.039C-537.31 128.706 -454.443 119.639 -429.643 126.039C-404.843 132.439 -15.3098 218.706 176.357 261.039C227.857 269.539 293.856 256.439 143.856 122.039C-0.943748 38.0389 -118.794 -32.8351 -127.128 -37.6684"
+                          stroke="#FBC333" stroke-width="30"></path>
+                      </g>
+                    </svg>
+                  </div>
+                  <div class="swiper-one-illustration cc-two cc-slide-five w-embed">
+                    <svg viewbox="0 0 316 338" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <mask id="mask0_762_637" style="mask-type: alpha" maskunits="userSpaceOnUse" x="-573" y="0"
+                        width="889" height="870">
+                        <path fill-rule="evenodd" clip-rule="evenodd"
+                          d="M112.606 121.131C112.167 113.921 118.477 114.02 122.373 114.755C97.9552 96.8338 72.1221 78.3973 45.4221 59.6316C17.2406 42.6327 -15.8463 22.5611 -51.3585 0.799438L-51.8962 6.48404C7.66025 47.0882 64.978 86.2329 112.606 121.131ZM112.606 121.132H112.617C143.586 143.804 170.44 164.688 191.159 182.993C208.103 197.962 220.581 210.801 229.283 221.786C226.627 210.527 218.616 195.24 200.64 174.652L200.629 174.642C177.013 155.558 150.642 135.497 122.373 114.756C118.477 114.021 112.167 113.922 112.606 121.132ZM-437.856 399.521C-387.408 280.628 -257.771 267.459 -120.397 284.457C-118.378 280.645 -111.655 267.24 -109.335 253.157C-111.655 267.24 -118.377 280.646 -120.397 284.459C-54.9324 292.559 12.2912 307.511 73.54 321.133L73.541 321.134C164.795 341.43 242.786 358.776 281.936 346.122C347.374 324.964 312.246 269.962 228.843 198.136C229.37 199.025 229.864 199.914 230.347 200.792C237.666 214.158 240.541 225.857 238.961 235.777C288.97 322.55 39.7376 259.196 39.7376 259.196C-18.9292 244.162 -72.0213 231.256 -120.065 220.206L-120.068 220.204C-370.273 162.635 -483.351 155.314 -533.712 158.595L-533.714 158.595C-566.954 160.757 -572.869 167.539 -572.869 167.539V311.069C-566.482 299.086 -539.618 287.201 -512.347 277.84C-480.5 266.91 -448.128 259.415 -447.195 259.206C-479.272 280.99 -506.016 320.343 -526.889 367.927C-549.023 418.44 -564.563 478.205 -572.87 536.127V869.279H-402.914L-431.194 730.193C-469.757 574.064 -467.255 468.833 -437.856 399.521Z"
+                          fill="#735BF6"></path>
+                      </mask>
+                      <g mask="url(#mask0_762_637)">
+                        <path class="fifth-slide-one"
+                          d="M-51.9331 3.7594L128.014 127.08L247.559 221.457C279.228 250.19 325.955 307.53 259.514 307.026C176.461 306.397 -261.117 213.335 -322.451 234.485M-322.451 234.485C-371.518 251.404 -562.001 739.574 -602.89 796.678M-322.451 234.485C-377.44 215.225 -651.046 198.683 -703.497 234.485"
+                          stroke="#091C4B" stroke-width="250"></path>
+                      </g>
+                    </svg>
+                  </div>
+                </div>
+                <div class="usecase-description_container">
+                  <div class="usecase-description">Leisure Complexes</div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="swiper-pagination"></div>
+          <div class="usecases-text_wrapper">
+            <div class="usecase-text_container">
+              <div class="usecase-text cc-active">Membership Programs</div>
+            </div>
+            <div id="w-node-_579cb66a-1f2a-38b1-0775-1fa100cdb957-a1b7198e" class="usecase-text_container">
+              <div class="usecase-text">Loyalty &amp; Rewards</div>
+            </div>
+            <div id="w-node-_680c4390-9f3e-27c5-2709-e4cb1ee39adc-a1b7198e" class="usecase-text_container">
+              <div class="usecase-text">Events &amp; Festivals</div>
+            </div>
+            <div id="w-node-_8f2b6a13-4416-f256-1886-333d8048ba56-a1b7198e" class="usecase-text_container">
+              <div class="usecase-text">Campus Experiences</div>
+            </div>
+            <div id="w-node-_435cc374-e52b-e5bf-c47c-40599d91fab1-a1b7198e" class="usecase-text_container">
+              <div class="usecase-text">Leisure Complexes</div>
+            </div>
+          </div>
+          <div class="slider-arrow cc-next"></div>
+          <div class="slider-arrow cc-prev"></div>
+        </div>
+      </div>
+      <section class="c-services">
+        <div class="services-text_container">
+          <div class="service-subtext">
+            <div class="heading-h4">If your business has lots of</div>
+          </div>
+          <div data-service-anim="" class="service-illustration_text service-anim">
+            <div data-top-anim="" class="service-text_block cc-active">
+              <div class="heading-h3">Customers</div>
+              <div class="service-illustration_line w-embed">
+                <svg viewbox="0 0 611 30" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path class="service-line_path cc-one"
+                    d="M3 27C18.0251 21.6534 35.6533 13.1747 54.0727 11.2445C75.5483 8.99404 93.1037 17.1022 111.403 21.373C136.302 27.1839 160.316 11.7869 177.616 4.70648C185.731 1.38524 202.574 3.8166 210.42 4.49212C243.809 7.36686 276.94 11.5369 309.235 16.8715C334.328 21.0164 355.751 16.4409 379.283 11.0301C403.914 5.36657 430.66 11.0394 454.984 14.6207C464.492 16.0207 472.641 17.1702 482.034 14.8886C491.478 12.5946 498.545 7.49288 509.084 6.42137C534.22 3.86584 559.313 15.3927 579.738 21.3194C590.004 24.2983 596.7 26.404 608 25.0708"
+                    stroke="#FF9ECB" stroke-width="6" stroke-linecap="round"></path>
+                </svg>
+              </div>
+            </div>
+            <!--- <div data-top-anim="" class="service-text_block">
+              <div class="heading-h3">Students</div>
+              <div class="service-illustration_line cc-two w-embed"><svg viewbox="0 0 611 30" fill="none"
+                  xmlns="http://www.w3.org/2000/svg">
+                  <path class="service-line_path cc-two"
+                    d="M3 27C18.0251 21.6534 35.6533 13.1747 54.0727 11.2445C75.5483 8.99404 93.1037 17.1022 111.403 21.373C136.302 27.1839 160.316 11.7869 177.616 4.70648C185.731 1.38524 202.574 3.8166 210.42 4.49212C243.809 7.36686 276.94 11.5369 309.235 16.8715C334.328 21.0164 355.751 16.4409 379.283 11.0301C403.914 5.36657 430.66 11.0394 454.984 14.6207C464.492 16.0207 472.641 17.1702 482.034 14.8886C491.478 12.5946 498.545 7.49288 509.084 6.42137C534.22 3.86584 559.313 15.3927 579.738 21.3194C590.004 24.2983 596.7 26.404 608 25.0708"
+                    stroke="#FF9ECB" stroke-width="6" stroke-linecap="round"></path>
+                </svg></div>
+            </div>--->
+            <div data-top-anim="" class="service-text_block">
+              <div class="heading-h3">Sub-merchants</div>
+              <div class="service-illustration_line cc-five w-embed">
+                <svg viewbox="0 0 611 30" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path class="service-line_path cc-four"
+                    d="M3 27C18.0251 21.6534 35.6533 13.1747 54.0727 11.2445C75.5483 8.99404 93.1037 17.1022 111.403 21.373C136.302 27.1839 160.316 11.7869 177.616 4.70648C185.731 1.38524 202.574 3.8166 210.42 4.49212C243.809 7.36686 276.94 11.5369 309.235 16.8715C334.328 21.0164 355.751 16.4409 379.283 11.0301C403.914 5.36657 430.66 11.0394 454.984 14.6207C464.492 16.0207 472.641 17.1702 482.034 14.8886C491.478 12.5946 498.545 7.49288 509.084 6.42137C534.22 3.86584 559.313 15.3927 579.738 21.3194C590.004 24.2983 596.7 26.404 608 25.0708"
+                    stroke="#FF9ECB" stroke-width="6" stroke-linecap="round"></path>
+                </svg>
+              </div>
+            </div>
+            <div data-top-anim="" class="service-text_block">
+              <div class="heading-h3">Guests</div>
+              <div class="service-illustration_line cc-four w-embed">
+                <svg viewbox="0 0 611 30" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path class="service-line_path cc-four"
+                    d="M3 27C18.0251 21.6534 35.6533 13.1747 54.0727 11.2445C75.5483 8.99404 93.1037 17.1022 111.403 21.373C136.302 27.1839 160.316 11.7869 177.616 4.70648C185.731 1.38524 202.574 3.8166 210.42 4.49212C243.809 7.36686 276.94 11.5369 309.235 16.8715C334.328 21.0164 355.751 16.4409 379.283 11.0301C403.914 5.36657 430.66 11.0394 454.984 14.6207C464.492 16.0207 472.641 17.1702 482.034 14.8886C491.478 12.5946 498.545 7.49288 509.084 6.42137C534.22 3.86584 559.313 15.3927 579.738 21.3194C590.004 24.2983 596.7 26.404 608 25.0708"
+                    stroke="#FF9ECB" stroke-width="6" stroke-linecap="round"></path>
+                </svg>
+              </div>
+            </div>
+            <div data-top-anim="" class="service-text_block">
+              <div class="heading-h3">Vendors</div>
+              <div class="service-illustration_line cc-six w-embed">
+                <svg viewbox="0 0 611 30" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path class="service-line_path cc-four"
+                    d="M3 27C18.0251 21.6534 35.6533 13.1747 54.0727 11.2445C75.5483 8.99404 93.1037 17.1022 111.403 21.373C136.302 27.1839 160.316 11.7869 177.616 4.70648C185.731 1.38524 202.574 3.8166 210.42 4.49212C243.809 7.36686 276.94 11.5369 309.235 16.8715C334.328 21.0164 355.751 16.4409 379.283 11.0301C403.914 5.36657 430.66 11.0394 454.984 14.6207C464.492 16.0207 472.641 17.1702 482.034 14.8886C491.478 12.5946 498.545 7.49288 509.084 6.42137C534.22 3.86584 559.313 15.3927 579.738 21.3194C590.004 24.2983 596.7 26.404 608 25.0708"
+                    stroke="#FF9ECB" stroke-width="6" stroke-linecap="round"></path>
+                </svg>
+              </div>
+            </div>
+            <div data-top-anim="" class="service-text_block">
+              <div class="heading-h3">Members</div>
+              <div class="service-illustration_line cc-three w-embed">
+                <svg viewbox="0 0 611 30" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path class="service-line_path cc-three"
+                    d="M3 27C18.0251 21.6534 35.6533 13.1747 54.0727 11.2445C75.5483 8.99404 93.1037 17.1022 111.403 21.373C136.302 27.1839 160.316 11.7869 177.616 4.70648C185.731 1.38524 202.574 3.8166 210.42 4.49212C243.809 7.36686 276.94 11.5369 309.235 16.8715C334.328 21.0164 355.751 16.4409 379.283 11.0301C403.914 5.36657 430.66 11.0394 454.984 14.6207C464.492 16.0207 472.641 17.1702 482.034 14.8886C491.478 12.5946 498.545 7.49288 509.084 6.42137C534.22 3.86584 559.313 15.3927 579.738 21.3194C590.004 24.2983 596.7 26.404 608 25.0708"
+                    stroke="#FF9ECB" stroke-width="6" stroke-linecap="round"></path>
+                </svg>
+              </div>
+            </div>
+            <div data-top-anim="" class="service-text_block">
+              <div class="heading-h3">Partners</div>
+              <div class="service-illustration_line cc-seven w-embed">
+                <svg viewbox="0 0 611 30" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path class="service-line_path cc-four"
+                    d="M3 27C18.0251 21.6534 35.6533 13.1747 54.0727 11.2445C75.5483 8.99404 93.1037 17.1022 111.403 21.373C136.302 27.1839 160.316 11.7869 177.616 4.70648C185.731 1.38524 202.574 3.8166 210.42 4.49212C243.809 7.36686 276.94 11.5369 309.235 16.8715C334.328 21.0164 355.751 16.4409 379.283 11.0301C403.914 5.36657 430.66 11.0394 454.984 14.6207C464.492 16.0207 472.641 17.1702 482.034 14.8886C491.478 12.5946 498.545 7.49288 509.084 6.42137C534.22 3.86584 559.313 15.3927 579.738 21.3194C590.004 24.2983 596.7 26.404 608 25.0708"
+                    stroke="#FF9ECB" stroke-width="6" stroke-linecap="round"></path>
+                </svg>
+              </div>
+            </div>
+          </div>
+          <div class="service-header">
+            <div class="service-header_line cc-two">
+              <div data-opaque-anim="" class="heading-h4 cc-alt-two">
+                doing lots of recurring transactions…
+              </div>
+            </div>
+          </div>
+          <div class="section-arrow">
+            <svg viewBox="0 0 462 418" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path class="arrow-line"
+                d="M-6.50081 115.5C10.8068 159.604 49.5002 214 89.4998 239.5C123.5 264 225 278 284 232.5C311.5 208.5 315.5 176 303.359 149.462C295 136.584 278.86 128.903 262.842 136.584C238.37 148.318 231.283 186.099 234.098 210.126C242.885 285.112 298.811 360.25 369.701 387.211"
+                stroke="#FF9ECB" stroke-width="6" stroke-linecap="round" />
+              <path class="arrow-edge-one" d="M313.341 393.194C326.595 393.232 356.848 392.383 371.828 388.684"
+                stroke="#FF9ECB" stroke-width="6" stroke-linecap="round" />
+              <path class="arrow-edge-two" d="M371.828 388.683C365.624 376.97 352.292 349.8 348.593 334.82"
+                stroke="#FF9ECB" stroke-width="6" stroke-linecap="round" />
+            </svg>
+          </div>
+        </div>
+        <div class="relative">
+          <div class="pin-wrapper">
+            <canvas class="card-canvas"></canvas>
+          </div>
+          <div class="card-bg_shape w-embed">
+            <svg viewbox="0 0 472 597" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path class="card-bg_path"
+                d="M391.226 28C391.226 12.536 378.69 0 363.226 0H104.226C88.7625 0 76.2264 12.536 76.2264 28V219.604C76.2264 349.226 50.3096 477.54 0 597H471.07C418.419 477.644 391.226 348.624 391.226 218.172V28Z"
+                fill="currentColor"></path>
+            </svg>
+          </div>
+          <div class="service-text_inner">
+            peppermint is what you’ve been waiting for
+          </div>
+        </div>
+        <div class="gun-img">
+          <img src="images/gun-img.svg" loading="lazy" alt="" class="c-img" />
+          <div class="gun-swirl cc-one w-embed">
+            <svg viewbox="0 0 447 234" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path class="gun-swirl_path cc-one"
+                d="M3 210.7C39 226.7 129.1 243.8 167.5 202.2C215.5 150.2 301.5 -55.3 444.5 23.7" stroke="#99DED4"
+                stroke-width="6"></path>
+            </svg>
+          </div>
+          <div class="gun-swirl cc-two w-embed">
+            <svg viewbox="0 0 225 167" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path class="gun-swirl_path cc-two"
+                d="M217 47.2C176.7 100.2 81.3003 193.2 22.5003 141.2C-12.4997 99.7 33.2003 31.5 72.5003 9.19995"
+                stroke="#99DED4" stroke-width="6"></path>
+            </svg>
+          </div>
+        </div>
+        <div class="debit-card cc-orange">
+          <div class="debit-img_small cc-orange">
+            <img src="images/orange-small-card.svg" loading="lazy" alt="" class="c-img" />
+          </div>
+          <div class="debit-img_big cc-orange">
+            <img src="images/orange-big-card.svg" loading="lazy" alt="" class="c-img" />
+          </div>
+        </div>
+        <div class="debit-card cc-blue">
+          <div class="debit-img_small cc-blue">
+            <img src="images/blue-small-card.svg" loading="lazy" alt="" class="c-img" />
+          </div>
+          <div class="debit-img_big cc-blue">
+            <img src="images/blue-big-card.svg" loading="lazy" alt="" class="c-img" />
+          </div>
+        </div>
+        <div class="debit-card cc-purple">
+          <img src="images/purple-small-card.svg" loading="lazy" alt="" class="c-img" />
+        </div>
+      </section>
+      <section class="c-faq">
+        <div class="faq-inner">
+          <div class="faq-header">Frequently Asked Questions</div>
+          <div class="faq-wrapper">
+            <div class="c-accordion">
+              <div class="accordion-inner cc-active">
+                <div class="accordion-inner_flex">
+                  <div>How do I start a card program with Peppermint?</div>
+                </div>
+                <div class="accordion-icon cc-active"></div>
+              </div>
+              <div class="accordion-content cc-show">
+                <div class="accordion-content_inner">
+                  <div class="accordion-content_text w-richtext">
+                    <p>Launching a card program with Peppermint is easy.</p>
+                    <p>
+                      Simply sign up, complete a quick onboarding, and then
+                      the magic begins.
+                    </p>
+                    <p>
+                      Choose between virtual and/or physical cards, customize
+                      balance and transaction limits, explore card designs –
+                      build an experience fit for your business’ unique
+                      objectives <em>right</em> from the dashboard.
+                    </p>
+                    <p>
+                      Cards will be delivered to you and your customers via
+                      dispatch or API 😎. Then sit back, relax, and enjoy
+                      higher sales, happier customers, and more control over
+                      your business.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="c-accordion">
+              <div class="accordion-inner">
+                <div class="accordion-inner_flex">
+                  <div>
+                    How can Peppermint help me grow my revenue and business?
+                  </div>
+                </div>
+                <div class="accordion-icon"></div>
+              </div>
+              <div class="accordion-content">
+                <div class="accordion-content_inner">
+                  <div class="accordion-content_text w-richtext">
+                    <p>
+                      Imagine getting back all those declined payments? The
+                      reversed transfers? With Peppermint, you will. Accept
+                      payments even when devices are offline and never lose a
+                      sale again.
+                    </p>
+                    <p>
+                      Enjoy faster transaction times and higher revenue with
+                      contactless payments – your customers simply tap their
+                      phone or card and go 💸.
+                    </p>
+                    <p>
+                      Don’t underestimate the value of having a branded card
+                      in your customers’ hands, pockets, and hearts. Go from a
+                      basic commodity to an iconic brand 💅🏾.
+                    </p>
+                    <p>
+                      As if that wasn’t enough. Leverage rich data to identify
+                      and sell more of what people want. Go a step further and
+                      direct customer behavior – add loyalty and rewards to an
+                      existing card program to give and get more from your
+                      customers.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="c-accordion">
+              <div class="accordion-inner">
+                <div class="accordion-inner_flex">
+                  <div>How do I accept payments from Peppermint cards?</div>
+                </div>
+                <div class="accordion-icon"></div>
+              </div>
+              <div class="accordion-content">
+                <div class="accordion-content_inner">
+                  <div class="accordion-content_text w-richtext">
+                    <p>
+                      You can accept payments from Peppermint cards right from
+                      your NFC-enabled phone!
+                    </p>
+                    <p>
+                      Once your business is verified, simply download the
+                      Peppermint merchant app on the relevant phones, connect
+                      your business profile, configure your account securely,
+                      and start enjoying the lighter, faster, and more
+                      affordable payment acceptance option.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="c-accordion">
+              <div class="accordion-inner">
+                <div class="accordion-inner_flex">
+                  <div>
+                    How long does it take to get my settlements with
+                    Peppermint?
+                  </div>
+                </div>
+                <div class="accordion-icon"></div>
+              </div>
+              <div class="accordion-content">
+                <div class="accordion-content_inner">
+                  <div class="accordion-content_text w-richtext">
+                    <p>
+                      Funds are available to you as soon as customers make
+                      payments – you choose the interval at which you’d like
+                      to access them.
+                    </p>
+                    <p>
+                      Enjoy same-day bulk settlements or make it instant,
+                      because why not?
+                    </p>
+                    <p>You’re in control with Peppermint.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="c-accordion">
+              <div class="accordion-inner">
+                <div class="accordion-inner_flex">
+                  <div>
+                    How quickly are refunds and withdrawals processed with
+                    Peppermint?
+                  </div>
+                </div>
+                <div class="accordion-icon"></div>
+              </div>
+              <div class="accordion-content">
+                <div class="accordion-content_inner">
+                  <div class="accordion-content_text w-richtext">
+                    <p>
+                      <em>If you’re reading this, the refund has already been
+                        processed.</em>
+                      Seriously, it's that fast!
+                    </p>
+                    <p>
+                      Simply credit the customer’s card with a tap or do it
+                      remotely from the dashboard.
+                    </p>
+                    <p>
+                      No waiting 7-30 days for the bank to process, no fees or
+                      penalties, no angry tweets from angry customers. Protect
+                      your brand with Peppermint.
+                    </p>
+                    <p>
+                      For withdrawals, you decide. Hold funds within your
+                      business once a card is funded, allow customers move
+                      value between their physical and digital cards, and
+                      perhaps even to other Peppermint users.
+                    </p>
+                    <p>
+                      Customize the withdrawal experience based on your risk
+                      profile and business objectives.
+                    </p>
+                    <p>The power is in your hands.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="c-accordion">
+              <div class="accordion-inner">
+                <div class="accordion-inner_flex">
+                  <div>
+                    How do my customers top up their Peppermint cards?
+                  </div>
+                </div>
+                <div class="accordion-icon"></div>
+              </div>
+              <div class="accordion-content">
+                <div class="accordion-content_inner">
+                  <div class="accordion-content_text w-richtext">
+                    <p>
+                      Peppermint is the only offering in the market that
+                      allows customers top up their cards
+                      <em>by themselves.</em>
+                    </p>
+                    <p>
+                      Customers simply fund yours or the Peppermint app and
+                      then tap their card to their phone to transfer value
+                      instantly.
+                    </p>
+                    <p>
+                      No need to go to a specific location or agent; no need
+                      to use cash.
+                    </p>
+                    <p>
+                      In-person and cash top-ups are nonetheless available
+                      with Peppermint. You simply provide agents or machine
+                      kiosks that your customers can visit to manage their
+                      cards.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="c-accordion">
+              <div class="accordion-inner">
+                <div class="accordion-inner_flex">
+                  <div>
+                    Do I need a customer-facing app to issue Peppermint cards?
+                  </div>
+                </div>
+                <div class="accordion-icon"></div>
+              </div>
+              <div class="accordion-content">
+                <div class="accordion-content_inner">
+                  <div class="accordion-content_text w-richtext">
+                    <p>The choice is yours.</p>
+                    <p>
+                      If you have tech-savvy customers and want to offer them
+                      an all-in-one experience, they can use the Peppermint
+                      app.
+                    </p>
+                    <p>
+                      If you have an existing app, you can add the Peppermint
+                      plug-in, which will allow your customers manage their
+                      cards from <em>your</em> app. They can add value to
+                      their physical cards, deactivate cards, and even pay
+                      from their phone.
+                    </p>
+                    <p>
+                      If you have neither and want to offer a card-only
+                      experience, you can do just that. Simply issue cards and
+                      manage your program from the dashboard.
+                    </p>
+                    <p>
+                      The right choice will come down to your unique business
+                      operations and goals.
+                    </p>
+                    <p>
+                      Meanwhile, the integration takes only a few minutes and
+                      we’ll be by your side the whole way ✨.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="c-accordion">
+              <div class="accordion-inner">
+                <div class="accordion-inner_flex">
+                  <div>Are Peppermint cards the same as regular cards?</div>
+                </div>
+                <div class="accordion-icon"></div>
+              </div>
+              <div class="accordion-content">
+                <div class="accordion-content_inner">
+                  <div class="accordion-content_text w-richtext">
+                    <p>
+                      Peppermint cards are stored-value NFC cards, which are
+                      just as secure as regular bank cards, but with added
+                      reliability and convenience for making and accepting
+                      payments.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <a href="contact-us.html" class="c-button cc-lg w-inline-block">
+          <div class="btn-text">Get Peppermint</div>
+        </a>
+      </section>
+      <footer class="c-footer">
+        <div class="footer-inner">
+          <div class="w-embed w-script">
+            <script type="text/javascript">
+              document.write(new Date().getFullYear());
+            </script>
+            Peppermint Inc. All rights reserved.
+          </div>
+          <div class="footer-links">
+            <a href="terms-and-conditions.html" class="footer-link">Terms &amp; Conditions</a>
+            <a href="privacy-policy.html" class="footer-link">Privacy Policy</a>
+            <a href="https://wearecheck.co/" target="_blank" class="check-link w-inline-block"></a>
+          </div>
+        </div>
+        <div class="footer-text_container">
+          <div class="footer-text cc-one">peppermint</div>
+          <div class="footer-text cc-two">peppermint</div>
+        </div>
+      </footer>
+    </main>
+  </div>
+  <script src="https://d3e54v103j8qbb.cloudfront.net/js/jquery-3.5.1.min.dc5e7f18c8.js?site=6661acf0edb53d45a1b7197f"
+    type="text/javascript" integrity="sha256-9/aliU8dGd2tb6OSsuzixeV4y/faTqgFtohetphbbj0="
+    crossorigin="anonymous"></script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"
+    integrity="sha512-7eHRwcbYkK4d9g/6tD/mhkf++eoTHwpNM9woBxtPUBWm67zeAfFC+HrdoE2GanKeocly/VxeLvIqwvCdk7qScg=="
+    crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"
+    integrity="sha512-onMTRKJBKz8M1TnqqDuGBlowlH0ohFzMXYRNebz+yOcc5TQr/zAKsthzhuv0hiyUKEiQEQXEynnXCvNTOk50dg=="
+    crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script src="https://mdn.check-dc.com/BASE/plugins/code-drawsvgpluginmin-qz15tbjs-t0wMA.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Swiper/11.0.5/swiper-bundle.min.js"
+    integrity="sha512-Ysw1DcK1P+uYLqprEAzNQJP+J4hTx4t/3X2nbVwszao8wD+9afLjBQYjz7Uk4ADP+Er++mJoScI42ueGtQOzEA=="
+    crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+  <script src="https://mdn.check-dc.com/BASE/plugins/code-splittextmin-fpprcxjs-t0wMA.js"></script>
+
+  <script src="https://unpkg.com/lenis@1.1.3/dist/lenis.min.js"></script>
+  <script>
+    gsap.registerPlugin(
+      ScrollTrigger,
+      DrawSVGPlugin,
+      SplitText
+    );
+    //Smooth Scroll
+    const lenis = new Lenis();
+    function raf (time) {
+      lenis.raf(time);
+      requestAnimationFrame(raf);
+    }
+    requestAnimationFrame(raf);
+    window.onload = () => {
+      if (history.scrollRestoration) {
+        history.scrollRestoration = "manual";
+      } else {
+        window.onbeforeunload = function () {
+          window.scrollTo(0, 0);
+        };
+      }
+    };
+    lenis.on("scroll", ScrollTrigger.update);
+    function checkDevice () {
+      if (window.innerWidth <= 767) {
+        isMobile = true;
+        isWideScreen = false;
+      } else if (window.innerWidth >= 1700) {
+        isWideScreen = true;
+        isMobile = false;
+      } else {
+        isMobile = false;
+        isWideScreen = false;
+      }
+    }
+    checkDevice();
+    window.addEventListener("resize", checkDevice);
+    console.log("👋 – 🔨 with ❤️ by Check");
+  </script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/bodymovin/5.12.2/lottie.min.js"></script>
+  <script>
+    "use strict";
+
+    document.fonts.ready.then(() => {
+      //hero animation
+
+      gsap.set("[data-hero-fade]", { visibility: "visible", opacity: 1 });
+      gsap.set(".hero-hand_illustration", {
+        visibility: "visible",
+        opacity: 1,
+      });
+      gsap.set(".hero-shape", { visibility: "visible", opacity: 1 });
+      gsap.set(".c-star", { visibility: "visible", opacity: 1 });
+      gsap.set(".hero-swirl", { visibility: "visible", opacity: 1 });
+
+      //Hero Reveal Animation
+      const heroTl = gsap.timeline();
+      // init hero lottie
+      heroTl
+        .from(
+          ".hero-hand_illustration",
+          {
+            duration: 1.1,
+            xPercent: 30,
+            rotationZ: "-45deg",
+            yPercent: "20",
+            ease: "power3.out",
+          },
+          "<+0.2"
+        )
+        .fromTo(
+          ".broken-path-one",
+          0.5,
+          { drawSVG: "100% 100%" },
+          { drawSVG: "0% 100%", ease: "power2.out" },
+          "<+0.8"
+        )
+        .fromTo(
+          ".broken-path-two",
+          0.3,
+          { drawSVG: "100% 100%" },
+          { drawSVG: "0% 100%", ease: "power2.out" },
+          "<"
+        )
+        .fromTo(
+          ".broken-path-three",
+          0.6,
+          { drawSVG: "100% 100%" },
+          { drawSVG: "0% 100%", ease: "power2.out" },
+          "<"
+        )
+        .fromTo(
+          ".broken-path-four",
+          0.6,
+          { drawSVG: "100% 100%" },
+          { drawSVG: "0% 100%", ease: "power2.out" },
+          "<"
+        )
+        .fromTo(
+          ".broken-path-five",
+          0.5,
+          { drawSVG: "100% 100%" },
+          { drawSVG: "0% 100%", ease: "power2.out" },
+          "<"
+        )
+        .from(
+          ".pink-path",
+          {
+            duration: 1,
+            ease: "power2.out",
+            drawSVG: 0,
+          },
+          "<"
+        )
+        .from(
+          ".purple-path",
+          {
+            duration: 0.6,
+            ease: "power2.out",
+            drawSVG: 0,
+            delay: 0.1,
+          },
+          "<"
+        )
+        .from(
+          ".yellow-path",
+          {
+            duration: 0.5,
+            ease: "power2.out",
+            drawSVG: 0,
+            delay: 0.1,
+          },
+          "<"
+        )
+        .from(
+          ".red-path",
+          {
+            duration: 0.4,
+            ease: "power2.out",
+            drawSVG: 0,
+            delay: 0.15,
+          },
+          "<"
+        )
+        .from(
+          ".blue-path",
+          {
+            duration: 0.5,
+            ease: "power2.out",
+            stagger: 0.1,
+            drawSVG: 0,
+            delay: 0.2,
+          },
+          "<"
+        )
+        .from(
+          ".c-star",
+          {
+            duration: 1,
+            autoAlpha: 0,
+            stagger: 0.15,
+            ease: "easeIn",
+          },
+          "-=2"
+        );
+    });
+    // hero hand swirl reveal
+    gsap.from(".hero-hand_swirl", {
+      scrollTrigger: {
+        trigger: ".more-header",
+        start: "top 95%",
+      },
+      duration: 1,
+      drawSVG: 0,
+    });
+    // stars grow and shrink animation
+    gsap.to("[data-star-shrink]", {
+      scale: 0.6,
+      duration: 1,
+      repeat: -1,
+      yoyo: true,
+    });
+    gsap.to("[data-star-expand]", {
+      scale: 1.4,
+      duration: 1,
+      repeat: -1,
+      yoyo: true,
+    });
+    // more text swirl line reveal
+    gsap.from(".more-line_path", {
+      scrollTrigger: {
+        trigger: ".more-header",
+        start: "top 80%",
+      },
+      duration: 1,
+      stagger: 0.4,
+      drawSVG: 0,
+      delay: 0.5,
+    });
+    //more cards animation
+    if (isMobile) {
+      const cards = document.querySelectorAll(".more-card");
+      cards.forEach((card) => {
+        const tl = gsap.timeline({
+          scrollTrigger: {
+            trigger: card,
+            start: "top 90%",
+          },
+        });
+        tl.from(card, {
+          duration: 1,
+          bottom: "-50px",
+          opacity: 0,
+          ease: "elastic.out(1,0.5)",
+        });
+      });
+    }
+    // hand reveal animation
+    gsap.set("[data-hand-anim]", {
+      transformPerspective: 1000,
+      transformStyle: "preserve-3d",
+    });
+    const handAnimTl = gsap.timeline();
+    ScrollTrigger.create({
+      trigger: ".c-usecases",
+      start: isMobile ? "top 55%" : "top 15%",
+      animation: handAnimTl,
+    });
+    handAnimTl
+      .from(".usecase-left_hand", {
+        duration: 0.8,
+        left: isMobile ? "-100%" : "-50%",
+        rotationZ: "10deg",
+        yPercent: 20,
+        ease: "easeIn",
+      })
+      .from(
+        ".left-hand_path",
+        {
+          duration: 0.6,
+          drawSVG: 0,
+        },
+        "-=0.5"
+      )
+      .from(
+        ".usecase-right_hand",
+        {
+          duration: 2,
+          right: "-200%",
+          yPercent: -100,
+          rotationZ: "90deg",
+          ease: "easeinOut",
+        },
+        "-=1.5"
+      )
+      .from(
+        ".right-hand_path",
+        {
+          duration: 1,
+          drawSVG: 0,
+        },
+        "-=0.6"
+      );
+    //card swiping scrub animation
+    const handsScrubTl = gsap.timeline({
+      scrollTrigger: {
+        trigger: ".usecases-inner",
+        start: "-=600 bottom",
+        end: "bottom +=600",
+        scrub: true,
+      },
+    });
+    handsScrubTl.to(".usecase-right_hand", {
+      translateX: isMobile ? "-20px" : "-6.9vw",
+      translateY: "10px",
+    });
+
+    // homepage slide animation
+    if (!isMobile) {
+      const slideText = document.querySelectorAll(".usecase-text");
+
+      const onAutoplayTimeLeft = (swiper, time) => {
+        const currentSlide = document.querySelectorAll(
+          ".usecase-slide_wrapper .swiper-slide"
+        )[swiper.activeIndex];
+        const currentBullet = document.querySelectorAll(
+          ".usecase-slide_wrapper .swiper-pagination-progress"
+        )[swiper.realIndex];
+        const fullTime = currentSlide.dataset.swiperAutoplay
+          ? parseInt(currentSlide.dataset.swiperAutoplay)
+          : swiper.params.autoplay.delay;
+        const percentage = `${Math.min(
+          Math.max(
+            parseFloat((((fullTime - time) * 100) / fullTime).toFixed(1)),
+            0
+          ),
+          100
+        )}%`;
+        if (currentBullet) {
+          gsap.set(currentBullet, { width: percentage });
+        }
+      };
+
+      const onTransitionEnd = (swiper) => {
+        const allBullets = document.querySelectorAll(
+          ".usecase-slide_wrapper .swiper-pagination-progress"
+        );
+        const bulletsBefore = Array.from(allBullets).slice(
+          0,
+          swiper.realIndex
+        );
+        const bulletsAfter = Array.from(allBullets).slice(
+          swiper.realIndex,
+          allBullets.length
+        );
+
+        if (bulletsBefore.length) {
+          gsap.set(bulletsBefore, { width: "0%" });
+        }
+        if (bulletsAfter.length) {
+          gsap.set(bulletsAfter, { width: "0%" });
+        }
+      };
+
+      const homeSwiper = new Swiper(".usecase-slide_container.swiper", {
+        allowTouchMove: false,
+        slidesPerView: "auto",
+        init: false,
+        effect: "fade",
+        fadeEffect: {
+          crossFade: true,
+        },
+        autoplay: {
+          delay: 2500,
+          disableOnInteraction: false,
+        },
+        pagination: {
+          el: ".swiper-pagination",
+          clickable: "true",
+          type: "bullets",
+          renderBullet: function (index, className) {
+            return (
+              '<div class="' +
+              className +
+              '"><div class="progress-fill swiper-pagination-progress"></div> </div>'
+            );
+          },
+        },
+        navigation: {
+          nextEl: ".slider-arrow.cc-next",
+          prevEl: ".slider-arrow.cc-prev",
+        },
+        on: {
+          slideChange: function () {
+            const activeIndex = homeSwiper.activeIndex;
+            const activeSlide = homeSwiper.slides[homeSwiper.activeIndex];
+            const slidePath = activeSlide.querySelector(".slide-path");
+            const slideImage =
+              activeSlide.querySelector(".usecase-slide_img");
+            slideText[homeSwiper.activeIndex].classList.add("cc-active");
+            let j = "";
+            for (j = 0; j < homeSwiper.slides.length; j++) {
+              if (j !== activeIndex) {
+                slideText[j].classList.remove("cc-active");
+              }
+            }
+            gsap.fromTo(
+              slideImage,
+              1.3,
+              { width: "120%", height: "120%" },
+              { width: "100%", height: "100%", ease: "easeIn" }
+            );
+            gsap.fromTo(
+              slidePath,
+              2,
+              { drawSVG: "100% 100%" },
+              { drawSVG: "0% 100%", delay: 0.15 }
+            );
+            if (homeSwiper.activeIndex === 0) {
+              const tl = gsap.timeline();
+              tl.fromTo(
+                ".first-slide-one",
+                1,
+                { drawSVG: "0% 0%" },
+                { drawSVG: "0% 100% ", delay: 0.3, ease: "easeIn" }
+              );
+            }
+            if (homeSwiper.activeIndex === 1) {
+              const tl = gsap.timeline();
+              tl.fromTo(
+                ".second-slide-one",
+                1,
+                { drawSVG: "0% 0%" },
+                { drawSVG: "0% 100% ", delay: 0.3, ease: "easeIn" }
+              );
+            }
+            if (homeSwiper.activeIndex === 2) {
+              const tl = gsap.timeline();
+              tl.fromTo(
+                ".third-slide-one",
+                1,
+                { drawSVG: "0% 0%" },
+                { drawSVG: "0% 100% ", delay: 0.3, ease: "easeIn" }
+              );
+            }
+            if (homeSwiper.activeIndex === 3) {
+              const tl = gsap.timeline();
+              tl.fromTo(
+                ".fourth-slide-one",
+                1.5,
+                { drawSVG: "0% 0%" },
+                { drawSVG: "0% 100% ", delay: 0.3, ease: "easeIn" }
+              );
+            }
+            if (homeSwiper.activeIndex === 4) {
+              const tl = gsap.timeline();
+              tl.fromTo(
+                ".fifth-slide-one",
+                1.5,
+                { drawSVG: "0% 0%" },
+                { drawSVG: "0% 100% ", delay: 0.3, ease: "easeIn" }
+              );
+            }
+          },
+          autoplayTimeLeft: onAutoplayTimeLeft,
+          transitionEnd: onTransitionEnd,
+        },
+      });
+
+      const swiperContainer = document.querySelector(
+        ".usecase-slide_container"
+      );
+
+      function animateFirstSlide () {
+        const firstSlide = homeSwiper.slides[0];
+        const slidePath = firstSlide.querySelector(".slide-path");
+        const slideImage = firstSlide.querySelector(".usecase-slide_img");
+        slideText[0].classList.add("cc-active");
+        gsap.set(".swiper-one-illustration", {
+          opacity: 1,
+          visibility: "visible",
+        });
+        gsap.fromTo(
+          slidePath,
+          2,
+          { drawSVG: "100% 100%" },
+          { drawSVG: "0% 100%", delay: 0.15 }
+        );
+
+        const tl = gsap.timeline();
+        tl.fromTo(
+          ".first-slide-one",
+          1,
+          { drawSVG: "0% 0%" },
+          { drawSVG: "0% 100% ", delay: 0.3, ease: "easeIn" }
+        );
+      }
+
+      ScrollTrigger.create({
+        trigger: ".usecase-slide_wrapper",
+        start: "top 70%",
+        onEnter: () => {
+          homeSwiper.init();
+          animateFirstSlide();
+        },
+      });
+
+      const textPaginations = document.querySelectorAll(
+        ".usecase-text_container"
+      );
+      textPaginations.forEach((textPagination, index) => {
+        textPagination.addEventListener("click", () => {
+          homeSwiper.slideTo(index);
+        });
+      });
+    }
+    // gun reveal animation
+    const gunRevealTl = gsap.timeline({
+      scrollTrigger: {
+        trigger: ".c-services",
+        start: "top 80%",
+      },
+    });
+
+    if (isMobile) {
+      gunRevealTl.from(".gun-img", {
+        xPercent: -100,
+        duration: 0.8,
+      });
+    } else {
+      gunRevealTl.from(".gun-img", {
+        xPercent: 100,
+        duration: 0.8,
+      });
+    }
+
+    gunRevealTl
+      .fromTo(
+        ".gun-swirl_path.cc-one",
+        0.6,
+        { drawSVG: "100% 100%" },
+        { drawSVG: "100% 0% " },
+        "-=0.2"
+      )
+      .fromTo(
+        ".gun-swirl_path.cc-two",
+        0.4,
+        { drawSVG: "100% 100%" },
+        { drawSVG: "0% 100% " },
+        ">"
+      );
+
+    document.fonts.ready.then(() => {
+      const serviceTextContainer = document.querySelectorAll(".service-anim");
+      let serviceText;
+      let serviceTextIndex = "";
+      const serviceTopText = document.querySelectorAll("[data-top-anim]");
+      const serviceTopTextTotal = serviceTopText.length - 1;
+      let num = 0;
+      let numTwo = 0;
+      let topTextInterval;
+      let linePathContainer;
+      let linePath;
+      gsap.set(".service-line_path", {
+        drawSVG: 0,
+      });
+
+      const topTl = gsap.timeline({
+        scrollTrigger: {
+          trigger: ".c-services",
+          start: "top 80%",
+        },
+      });
+      topTl.fromTo(
+        ".service-line_path.cc-one",
+        1,
+        { drawSVG: "0% 0%" },
+        { drawSVG: "0% 100% " }
+      );
+      topTextInterval = setInterval(() => {
+        ++num;
+        if (num <= serviceTopTextTotal) {
+          serviceTopTextAnim(num);
+        } else if (num > serviceTopTextTotal) {
+          num = 0;
+          serviceTopTextAnim(num);
+        }
+      }, 3000);
+
+      // }
+      const serviceTopTextAnim = (i) => {
+        serviceTopText[i].classList.add("cc-active");
+        linePathContainer = serviceTopText[i].lastElementChild;
+        linePath = linePathContainer.getElementsByTagName("path");
+        gsap.fromTo(
+          linePath,
+          1,
+          { drawSVG: "0% 0%" },
+          { drawSVG: "0% 100% " }
+        );
+        let j = "";
+        for (j = 0; j < serviceTopText.length; j++) {
+          if (j !== i) {
+            serviceTopText[j].classList.remove("cc-active");
+          }
+        }
+      };
+      const resetServiceTopTextAnim = () => {
+        num = 0;
+        for (let i = 0; i < serviceTopText.length; i++) {
+          serviceTopText[i].classList.remove("cc-active");
+        }
+        serviceTopText[0].classList.add("cc-active");
+        gsap.fromTo(
+          ".service-line_path.cc-one",
+          1,
+          { drawSVG: "0% 100%" },
+          { drawSVG: "0% 0% " }
+        );
+      };
+
+      //debit card fall animation
+      if (!isMobile) {
+        const debitCards = document.querySelectorAll(".debit-card");
+        debitCards.forEach((card) => {
+          gsap.to(card, {
+            yPercent: 10,
+            ease: "linear",
+            scrollTrigger: {
+              trigger: card,
+              scrub: true,
+            },
+          });
+        });
+        gsap.set(".debit-card", {
+          transformPerspective: 1000,
+          transformStyle: "preserve-3d",
+        });
+        const fallTl = gsap.timeline({
+          scrollTrigger: {
+            trigger: ".relative",
+            start: "-500px bottom",
+            end: "+=1000",
+            scrub: 3,
+            once: true,
+          },
+        });
+        fallTl
+          .to(".debit-card.cc-orange", {
+            bottom: "273px",
+            rotationY: "-120deg",
+            rotationX: "-90deg",
+            marginLeft: "-150px",
+          })
+          .to(
+            ".debit-img_small.cc-orange",
+            {
+              opacity: 0,
+              duration: 0,
+            },
+            "-=0.2"
+          )
+          .to(
+            ".debit-img_big.cc-orange",
+            {
+              opacity: 1,
+              width: "600px",
+              height: "350px",
+              duration: 0,
+            },
+            "<"
+          )
+          .to(
+            ".debit-card.cc-orange",
+            {
+              bottom: isWideScreen ? "145vh" : "125vh",
+              rotationY: "0deg",
+              rotationX: "0deg",
+              marginLeft: "-500px",
+            },
+            "<"
+          )
+          .to(
+            ".debit-card.cc-blue",
+            {
+              bottom: "444px",
+              rotationY: "-60deg",
+              rotationX: "-90deg",
+              rotationZ: "-30deg",
+              marginLeft: "100px",
+            },
+            "-=0.9"
+          )
+          .to(
+            ".debit-img_small.cc-blue",
+            {
+              opacity: 0,
+              duration: 0,
+            },
+            "-=0.2"
+          )
+          .to(
+            ".debit-img_big.cc-blue",
+            {
+              opacity: 1,
+              width: "600px",
+              height: "350px",
+              duration: 0,
+            },
+            "<"
+          )
+          .to(
+            ".debit-card.cc-blue",
+            {
+              bottom: isWideScreen ? "140vh" : "125vh",
+              rotationY: "0deg",
+              rotationX: "0deg",
+              rotationZ: "0deg",
+              marginLeft: "-100px",
+            },
+            "<"
+          );
+      }
+      // card fade anim
+      const cardFadeTl = gsap.timeline({
+        scrollTrigger: {
+          trigger: ".relative",
+          start: isMobile ? "top 5%" : "top -100px",
+          end: isMobile ? "top -100px" : "top -550px",
+          scrub: 2,
+        },
+      });
+      cardFadeTl
+        .to(".debit-card.cc-orange", {
+          opacity: 0,
+          bottom: isMobile ? -100 : 600,
+          duration: 0.5,
+          rotationY: "-120deg",
+          rotationX: "-90deg",
+        })
+        .to(
+          ".debit-card.cc-blue",
+          {
+            opacity: 0,
+            bottom: isMobile ? -100 : 500,
+            duration: 0.5,
+            rotationY: "-60deg",
+            rotationX: "90deg",
+          },
+          "<"
+        );
+      //card background change tl
+      if (isMobile) {
+        const cardBgTl = gsap.timeline({
+          scrollTrigger: {
+            trigger: ".relative",
+            start: "top 50%",
+            end: "top 30%",
+            scrub: 2,
+          },
+        });
+        cardBgTl
+          .to(".card-bg_path", {
+            color: "#FCF6EA",
+            duration: 1,
+          })
+          .to(
+            ".service-text_inner",
+            {
+              opacity: 0,
+              duration: 1,
+            },
+            "<"
+          );
+      }
+    });
+
+    // faq accoridon
+    const faqAccordions = document.querySelectorAll(".accordion-inner");
+    faqAccordions.forEach((faqAccordion, i) => {
+      faqAccordion.addEventListener("click", () => {
+        faqAccordion.classList.toggle("cc-active");
+        faqAccordion.lastElementChild.classList.toggle("cc-active");
+        faqAccordion.nextElementSibling.classList.toggle("cc-show");
+      });
+    });
+  </script>
+  <script src="/js/scene.js"></script>
+</body>
+
+</html>
