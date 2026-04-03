@@ -55,7 +55,7 @@ The plugin is now installed. You'll only ever do this once.
 - If a security warning appears, go to **System Settings → Privacy & Security** and click **Open Anyway**, then double-click it again.
 - If it still won't open, run this once in Terminal: `chmod +x "Mac Start Figlink.command"` then double-click it.
 
-**Or from any terminal:** `node start.js`
+**Or from any terminal:** Open a terminal, ensure you are inside the folder your AI gave you the path for, and run `node start.js`
 
 A terminal window opens and stays open. Leave it running.
 
@@ -143,7 +143,7 @@ Restarting Figlink is not needed. Put it back at `prompts/system.md` whenever yo
 
 ## Keeping things tidy
 
-If the AI generates any temporary files, they go into the `temp/` folder. To clear them out, tell the AI: *"Clean up the temp folder."* Or run `node tools/process.js clean` in the terminal.
+If the AI generates any temporary files, they go into the `temp/` folder. To clear them out, tell the AI: *"Clean up the temp folder."* Or, open a terminal inside the repository folder and run `node tools/process.js clean`.
 
 ---
 
