@@ -85,17 +85,16 @@ Once it confirms you are connected, you can start prompting! You don't need spec
 - *"Analyze the spatial coordinates of these absolute-positioned elements and automatically restructure them into proper auto-layout rows and columns."*
 - *"Connect to this master design system [link] and my current file [link], then replace all hardcoded hex codes in my file with the closest matching semantic variables from the master."*
 - *"Translate all text layers in these screens to German, and if the new text overflows, convert the parent frames to auto-layout so they expand correctly."*
+- *"Turn these 15 screens into a clickable prototype. Find all buttons that say 'Next' and make them navigate to the next frame on click. Intelligently prototype back buttons to go back to the screen the user is coming from [not just the screen before it on the Figma page]"*
 - *"Scan this entire page for WCAG AA contrast violations, automatically adjust the lightness of failing text to pass, and generate a markdown report of the changes."*
-- *"Here's a Figma link — standardize it based on our design system: [paste link]"*
-- *"Extract all the semantic color tokens from this webpage and apply them to the currently selected frames"*
-- *"Analyze the layout structure of these cards and make them all use auto-layout with consistent padding"*
-- *"Look at the styles in this file and bind all the color fills to the nearest color variable"*
-- *"Read the text in these layers, translate it to Spanish using your own knowledge, and update the layers"*
-- *"Rename all the frame layers in this selection to match their text content"*
+- *"Update all text layers in this selection to use Title Case and add a 150% line height."*
+- *"Here's a Figma link — standardize it based on our design system standardization guide doc: [paste link to Figma] and attach markdown guide doc."*
+- *"Extract all the semantic color tokens from this webpage and apply them to the currently selected frames."*
+- *"Look at the styles in this file and bind all the color fills to the nearest color variable."*
 
 The AI reads your Figma file, thinks about what needs to change, and makes the changes directly. You'll see them appear in Figma in real time.
 
-**Note:** Your AI will sometimes need to make changes to the code in this repository to achieve your unique asks. This is perfectly fine and expected! That is the power of this system: it doesn't try to cater to every usecase, it simply provides a bridge that the AI can then use to reliably do anything.
+**Note:** Your AI will sometimes need to make changes to the code in this repository to achieve your unique asks. This is perfectly fine and expected! That is the power of this system: it doesn't try to cater to every use case; it simply provides a bridge that the AI can then use to reliably do anything.
 
 ---
 

@@ -116,17 +116,22 @@ Both `error` and `errorType` (`err.name`) are included in error responses.
 | Text | `set_characters`, `bulk_set_characters`, `apply_text_style`, `bulk_apply_text_style` |
 | Color | `apply_fill_style`, `apply_fill_variable`, `bulk_apply_fill_variable` |
 | Variables | `set_variable_binding`, `bulk_set_variable_binding`, `remove_variable_binding` |
-| Properties | `set_property`, `bulk_set_property` |
+| Properties | `set_property`, `bulk_set_property` (supports layout, typography, prototyping, and advanced auto-layout properties) |
 | Styles | `duplicate_text_style`, `bulk_duplicate_text_style`, `set_style_property`, `bulk_set_style_property`, `set_style_variable_binding`, `bulk_set_style_variable_binding`, `delete_style`, `bulk_delete_style` |
 | Advanced | `clone_component_set`, `swap_button_instances` |
 
 **Key implementation details:**
 
+- `SETTABLE_PROPERTIES` — The exhaustive list of modifiable fields, recently expanded to include:
+  - **Prototyping:** `reactions`, `scrollBehavior`, `overflowDirection`, `flowStartingPoints`
+  - **Advanced Layout:** `layoutWrap`, `layoutPositioning`, `itemReverseZIndex`, `strokesIncludedInLayout`, `primaryAxisAlignItems`, `counterAxisAlignItems`
+  - **Typography:** `lineHeight`, `letterSpacing`, `paragraphSpacing`, `textCase`, `textDecoration`, `textAlignHorizontal`, `textAlignVertical`, `textAutoResize`
+  - **Styling:** `cornerSmoothing`, `rotation`
 - `getNodes({ nodeId, depth })` — depth is clamped to `Math.max(0, depth)` before recursion.
 - `getNodesFlat({ nodeId, skipVectors, skipInstanceChildren })` — walks the tree with a `depth > 100` recursion guard. Vector-type nodes (`VECTOR`, `IMAGE`, `BOOLEAN_OPERATION`, `STAR`, `POLYGON`, `ELLIPSE`, `LINE`) are skipped when `skipVectors: true`. Instance children (IDs containing `;`) are skipped when `skipInstanceChildren: true`.
 - `applyFillVariable(nodeId, variableId, fillIndex)` — validates `fillIndex` is within bounds before indexing `fills[]`.
-- `setProperty(nodeId, field, value)` — throws if `field` is not in `SETTABLE_PROPERTIES`.
-- `serializeNode(node, depth)` — recursively serializes nodes to plain objects. Handles `figma.mixed` (serialized as `null`), fills, bound variables, corner radius, padding/spacing, text properties, and style names. Stops recursion at depth 0, includes `childCount` instead.
+- `setProperty(nodeId, field, value)` — throws if `field` is not in `SETTABLE_PROPERTIES`. For prototyping `reactions`, it calls the asynchronous `node.setReactionsAsync()` method under the hood. "Auto" spacing is intelligently handled by translating it to/from `SPACE_BETWEEN` align properties.
+- `serializeNode(node, depth)` — recursively serializes nodes to plain objects. Handles `figma.mixed` (serialized as `null`), fills, bound variables, corner radius, padding/spacing, text properties, prototyping logic, and style names. Stops recursion at depth 0, includes `childCount` instead.
 - `serializeBoundVariables(node)` — flattens bound variable objects to their `id` strings; normalizes both single bindings and array bindings.
 - `getAllAvailableVariables()` — imports `COLOR` and `FLOAT` variables from all connected team library collections, deduplicates against local variables, logs failures via `console.warn`.
 - `getAllDocumentVariables()` — walks the entire current page collecting all variable IDs from `boundVariables` and fill bindings, then resolves each. Logs individual resolution failures via `console.warn`.
@@ -180,7 +185,7 @@ node tools/figma.js [--file <fileKey|figmaUrl>] <command> [params-json]
 - `parse_link <url>` — returns `{ fileKey, nodeId }` for any Figma URL. Runs without a server.
 - `list_connected_files` — returns all files with an active plugin connection.
 
-**Connection behaviour:**
+**Connection behavior:**
 - Opens a new WebSocket on every invocation.
 - First incoming message is the auto-injected `active_prompt` (ignored because its `id` doesn't match the pending command id).
 - Times out after 15 seconds with `COMMAND_TIMEOUT_MS = 15000`.
@@ -251,7 +256,7 @@ When a CLI client makes its first request, the server reads this file and auto-i
 
 Because the server reads the file from disk on every new connection, changes to `system.md` take effect immediately without requiring a server restart.
 
-**Prompt file content rule:** The system prompt must be a **generic, reusable workflow guide** — it describes *how* to approach a class of task, not *what* to do for a specific task. It must never contain task-specific data such as URLs, file keys, hex values scraped from a particular site, or target node IDs.
+**Prompt file content rule:** The system prompt must be a **generic, reusable workflow guide** — it describes *how* to approach a class of tasks, not *what* to do for a specific task. It must never contain task-specific data such as URLs, file keys, hex values scraped from a particular site, or target node IDs.
 
 **Task-specific data belongs in `temp/`:** Extracted design tokens, build plans, site-specific specs, and intermediate scripts for a particular job should be written to `temp/<task-name>-*.md` (or `.js`, `.json`). The `temp/` folder is gitignored and is cleaned with `node tools/process.js clean`.
 
