@@ -313,6 +313,51 @@ async function standardizeFile() {
     console.log('\nEntire file processed.');
 }
 
+async function setLineHeightAuto() {
+    try {
+        console.log('Fetching local styles...');
+        const styles = await sendCommand('get_local_styles', {});
+        
+        if (!styles.textStyles || styles.textStyles.length === 0) {
+            console.log('No text styles found.');
+            return;
+        }
+
+        const textStyles = styles.textStyles;
+        console.log(`Found ${textStyles.length} text styles.`);
+
+        const items = textStyles.map(style => {
+            return {
+                styleId: style.id,
+                field: 'lineHeight',
+                value: { unit: 'AUTO' }
+            };
+        });
+
+        console.log(`Setting line height to auto for ${items.length} styles in chunks...`);
+        const results = [];
+        const chunkSize = 10;
+        
+        for (let i = 0; i < items.length; i += chunkSize) {
+            const chunk = items.slice(i, i + chunkSize);
+            console.log(`Processing chunk ${i / chunkSize + 1} of ${Math.ceil(items.length / chunkSize)}...`);
+            const chunkResults = await sendCommand('bulk_set_style_property', { items: chunk });
+            results.push(...chunkResults);
+        }
+        
+        const successCount = results.filter(r => r.ok).length;
+        console.log(`Successfully updated ${successCount}/${items.length} styles.`);
+        
+        const failures = results.filter(r => !r.ok);
+        if (failures.length > 0) {
+            console.log('Failures:');
+            failures.forEach(f => console.log(`Style ${f.styleId} failed: ${f.error}`));
+        }
+    } catch (err) {
+        console.error('Error:', err.message);
+    }
+}
+
 // ─── CLI entry (only runs when executed directly, not when require()'d) ────────
 
 if (require.main === module) {
@@ -328,6 +373,7 @@ Commands:
   standardize-page       Run standardization on every frame on the current page
   standardize-file       Run standardization on every page and frame in the file
   clean                  Delete all files from the temp/ folder
+  set-line-height-auto   Set the line height of all local text styles to AUTO
 `);
         process.exit(0);
     }
@@ -339,6 +385,8 @@ Commands:
         standardizePage().catch(err => { console.error(err.message); process.exit(1); });
     } else if (cmd === 'standardize-file') {
         standardizeFile().catch(err => { console.error(err.message); process.exit(1); });
+    } else if (cmd === 'set-line-height-auto') {
+        setLineHeightAuto().catch(err => { console.error(err.message); process.exit(1); });
     } else if (cmd === 'clean') {
         if (!fs.existsSync(TEMP_DIR)) {
             console.log('Temp folder is empty — nothing to clean.');
