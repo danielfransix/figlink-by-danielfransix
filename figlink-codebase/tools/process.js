@@ -358,6 +358,136 @@ async function setLineHeightAuto() {
     }
 }
 
+async function setCustomLineHeight() {
+    try {
+        console.log('Fetching local styles...');
+        const styles = await sendCommand('get_local_styles', {});
+        
+        if (!styles.textStyles || styles.textStyles.length === 0) {
+            console.log('No text styles found.');
+            return;
+        }
+
+        const items = styles.textStyles.map(style => {
+            const isTitle = style.name.toLowerCase().includes('text-title');
+            return {
+                styleId: style.id,
+                field: 'lineHeight',
+                value: isTitle ? { unit: 'AUTO' } : { unit: 'PERCENT', value: 150 }
+            };
+        });
+
+        console.log(`Setting custom line heights for ${items.length} styles in chunks...`);
+        const results = [];
+        const chunkSize = 2; // Small chunk size to avoid plugin timeouts
+        
+        for (let i = 0; i < items.length; i += chunkSize) {
+            const chunk = items.slice(i, i + chunkSize);
+            console.log(`Processing chunk ${i / chunkSize + 1} of ${Math.ceil(items.length / chunkSize)}...`);
+            const chunkResults = await sendCommand('bulk_set_style_property', { items: chunk }, 300000);
+            results.push(...chunkResults);
+        }
+        
+        const successCount = results.filter(r => r.ok).length;
+        console.log(`Successfully updated ${successCount}/${items.length} styles.`);
+        
+        const failures = results.filter(r => !r.ok);
+        if (failures.length > 0) {
+            console.log('Failures:');
+            failures.forEach(f => console.log(`Style ${f.styleId} failed: ${f.error}`));
+        }
+    } catch (err) {
+        console.error('Error:', err.message);
+    }
+}
+
+function toTitleCase(str) {
+    return str.replace(/\w\S*/g, function(txt) {
+        return txt.charAt(0).toUpperCase() + txt.substring(1).toLowerCase();
+    });
+}
+
+async function titleCaseText(nodeId) {
+    try {
+        console.log(`Fetching text nodes in ${nodeId}...`);
+        const nodes = await fetchNodes(nodeId);
+        const textNodes = nodes.filter(n => n.type === 'TEXT');
+        
+        if (textNodes.length === 0) {
+            console.log('No text nodes found.');
+            return;
+        }
+
+        const textUpdates = [];
+        const propertyUpdates = [];
+
+        textNodes.forEach(n => {
+            if (n.text) {
+                const titleCased = toTitleCase(n.text);
+                if (titleCased !== n.text) {
+                    textUpdates.push({ nodeId: n.id, text: titleCased });
+                }
+            }
+            propertyUpdates.push({ nodeId: n.id, field: 'lineHeight', value: { unit: 'PERCENT', value: 150 } });
+        });
+
+        console.log(`Found ${textNodes.length} text nodes. Applying title case to ${textUpdates.length} nodes and setting 150% line height to all.`);
+
+        if (textUpdates.length > 0) {
+            await sendCommand('bulk_set_characters', { items: textUpdates }, 300000);
+        }
+        
+        for (let i = 0; i < propertyUpdates.length; i += BULK_BINDING_CHUNK) {
+            await sendCommand('bulk_set_property', { items: propertyUpdates.slice(i, i + BULK_BINDING_CHUNK) }, 300000);
+        }
+        console.log('Done.');
+    } catch (err) {
+        console.error('Error:', err.message);
+    }
+}
+
+async function bindFillsToVariables(nodeId) {
+    try {
+        console.log(`Fetching variables and nodes for ${nodeId}...`);
+        const data = await fetchDocumentData();
+        const nodes = await fetchNodes(nodeId);
+        
+        const colorVars = data.variables.filter(v => v.resolvedType === 'COLOR');
+        if (colorVars.length === 0) {
+            console.log('No color variables found in the document.');
+            return;
+        }
+
+        const colorItems = [];
+
+        nodes.forEach(n => {
+            if (n.fills && n.fills.length > 0) {
+                n.fills.forEach((fill, index) => {
+                    if (fill.type === 'SOLID' && fill.color && !fill.colorVariableId) {
+                        const closest = findClosestColor(fill.color.r, fill.color.g, fill.color.b, colorVars);
+                        if (closest) {
+                            colorItems.push({ nodeId: n.id, variableId: closest.id, fillIndex: index });
+                        }
+                    }
+                });
+            }
+        });
+
+        if (colorItems.length === 0) {
+            console.log('No un-bound solid fills found to bind.');
+            return;
+        }
+
+        console.log(`Binding ${colorItems.length} fills to nearest color variables...`);
+        for (let i = 0; i < colorItems.length; i += BULK_BINDING_CHUNK) {
+            await sendCommand('bulk_apply_fill_variable', { items: colorItems.slice(i, i + BULK_BINDING_CHUNK) }, 300000);
+        }
+        console.log('Done.');
+    } catch (err) {
+        console.error('Error:', err.message);
+    }
+}
+
 // ─── CLI entry (only runs when executed directly, not when require()'d) ────────
 
 if (require.main === module) {
@@ -369,11 +499,14 @@ if (require.main === module) {
 Usage: node tools/process.js [--file <fileKey|figmaUrl>] <command> [nodeId]
 
 Commands:
-  standardize <nodeId>   Run the full standardization suite on a frame
-  standardize-page       Run standardization on every frame on the current page
-  standardize-file       Run standardization on every page and frame in the file
-  clean                  Delete all files from the temp/ folder
-  set-line-height-auto   Set the line height of all local text styles to AUTO
+  standardize <nodeId>            Run the full standardization suite on a frame
+  standardize-page                Run standardization on every frame on the current page
+  standardize-file                Run standardization on every page and frame in the file
+  clean                           Delete all files from the temp/ folder
+  set-line-height-auto            Set the line height of all local text styles to AUTO
+  set-custom-line-height          Set text styles to 150% line height, except 'text-title' (Auto)
+  title-case-text <nodeId>        Update text layers in selection to Title Case & 150% line height
+  bind-fills-to-variables <nodeId> Bind all solid fills in a node to the nearest semantic color variables
 `);
         process.exit(0);
     }
@@ -387,6 +520,14 @@ Commands:
         standardizeFile().catch(err => { console.error(err.message); process.exit(1); });
     } else if (cmd === 'set-line-height-auto') {
         setLineHeightAuto().catch(err => { console.error(err.message); process.exit(1); });
+    } else if (cmd === 'set-custom-line-height') {
+        setCustomLineHeight().catch(err => { console.error(err.message); process.exit(1); });
+    } else if (cmd === 'title-case-text') {
+        if (!targetId) { console.error('Error: provide a nodeId'); process.exit(1); }
+        titleCaseText(targetId).catch(err => { console.error(err.message); process.exit(1); });
+    } else if (cmd === 'bind-fills-to-variables') {
+        if (!targetId) { console.error('Error: provide a nodeId'); process.exit(1); }
+        bindFillsToVariables(targetId).catch(err => { console.error(err.message); process.exit(1); });
     } else if (cmd === 'clean') {
         if (!fs.existsSync(TEMP_DIR)) {
             console.log('Temp folder is empty — nothing to clean.');
