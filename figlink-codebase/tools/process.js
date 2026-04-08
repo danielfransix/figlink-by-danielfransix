@@ -4,7 +4,6 @@ const fs = require('fs');
 const path = require('path');
 const WebSocket = require('../link-server/node_modules/ws');
 const { randomUUID } = require('crypto');
-const { execSync } = require('child_process');
 
 const TEMP_DIR = path.join(__dirname, '..', 'temp');
 
@@ -15,7 +14,7 @@ const STANDARDIZE_TIMEOUT_MS = 300000; // 5 min per frame
 const PAGE_CONCURRENCY       = 3;     // Max pages processed in parallel
 // Match quality thresholds — skip binding if the closest match is too far off
 const COLOR_MAX_DIST         = 30;    // Max RGB Manhattan distance (0–765) to bind a color
-const FLOAT_MAX_DIFF         = 2;     // Max pixel difference to bind a spacing/radius value
+const FLOAT_MAX_DIFF         = 4;     // Max pixel difference to bind a spacing/radius value (generous enough for cadence snapping)
 
 // ─── Figma URL parser (mirrors figma.js) ─────────────────────────────────────
 
@@ -105,20 +104,36 @@ module.exports = { sendCommand };
 // ─── Data fetching ────────────────────────────────────────────────────────────
 
 async function fetchDocumentData() {
-    console.log('Fetching document variables and styles (including libraries)...');
-    const variables = await sendCommand('get_all_available_variables', {}, STANDARDIZE_TIMEOUT_MS);
-    const styles = await sendCommand('get_local_styles', {});
+    console.log('Fetching document variables and styles...');
+    const [localVarsResult, styles] = await Promise.all([
+        sendCommand('get_local_variables', {}, STANDARDIZE_TIMEOUT_MS),
+        sendCommand('get_local_styles', {}, STANDARDIZE_TIMEOUT_MS),
+    ]);
+
+    // Local vars from the current file (includes already-imported library vars).
+    const localVars = (localVarsResult.variables || localVarsResult).map(v => ({ ...v, _source: 'local' }));
+
+    // Merge in pre-fetched library variables if available.
+    // To use this, save your library variable export to temp/library-variables.json.
+    let variables = localVars;
+    const prebuiltPath = path.join(TEMP_DIR, 'library-variables.json');
+    if (fs.existsSync(prebuiltPath)) {
+        console.log('Loading pre-fetched library variables from temp/library-variables.json...');
+        const prebuilt = JSON.parse(fs.readFileSync(prebuiltPath, 'utf8'));
+        const libVars = (prebuilt.variables || []).map(v => ({ ...v, _source: 'library' }));
+        // Deduplicate: local wins if same name exists
+        const localNames = new Set(localVars.map(v => v.name));
+        const newLibVars = libVars.filter(v => !localNames.has(v.name));
+        variables = [...localVars, ...newLibVars];
+        console.log(`  Local: ${localVars.length}, Library additions: ${newLibVars.length}, Total: ${variables.length} variables`);
+    }
+
     return { variables, styles };
 }
 
 async function fetchNodes(nodeId) {
     console.log(`Fetching nodes for frame ${nodeId}...`);
     return await sendCommand('get_nodes_flat', { nodeId, skipVectors: true, skipInstanceChildren: true });
-}
-
-async function fetchNodeTree(nodeId) {
-    console.log(`Fetching node tree for frame ${nodeId}...`);
-    return await sendCommand('get_nodes', { nodeId, depth: 10 });
 }
 
 // ─── Matching helpers ─────────────────────────────────────────────────────────
@@ -150,7 +165,9 @@ function findClosestFloat(val, type, floatVars) {
     return minDiff <= FLOAT_MAX_DIFF ? closest : null;
 }
 
-function findClosestTextStyle(fontSize, fontWeight, fontFamily, textStyles) {
+// Find the closest matching text style by font size and weight.
+// Exact match wins; otherwise scores by weighted distance (size matters more than weight).
+function findClosestTextStyle(fontSize, fontWeight, textStyles) {
     let closest = null;
     let minDiff = Infinity;
     const weightMap = {
@@ -202,12 +219,14 @@ async function processStandardization(nodeId, prefetched = null) {
         const colorItems     = [];
         const bindingItems   = [];
         const textStyleItems = [];
-        const propertyItems  = [];
 
         const spacingFields = ['paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft', 'itemSpacing', 'counterAxisSpacing'];
         const radiusFields  = ['cornerRadius', 'topLeftRadius', 'topRightRadius', 'bottomRightRadius', 'bottomLeftRadius'];
 
         nodes.forEach(n => {
+            // Never modify component instances
+            if (n.type === 'INSTANCE') return;
+
             // Renaming
             if (n.type === 'TEXT' && n.text) {
                 const newName = n.text.trim().substring(0, 30);
@@ -220,18 +239,24 @@ async function processStandardization(nodeId, prefetched = null) {
                 }
             }
 
-            // Text styles
-            if (n.type === 'TEXT' && !n.textStyleId && n.fontSize) {
-                const closest = findClosestTextStyle(n.fontSize, n.fontWeight, n.fontFamily, textStyles);
+            // Text styles — bind any text node that has no style applied yet
+            if (n.type === 'TEXT' && n.fontSize && !n.textStyleId) {
+                const closest = findClosestTextStyle(n.fontSize, n.fontWeight, textStyles);
                 if (closest) textStyleItems.push({ nodeId: n.id, styleId: closest.id });
             }
 
-            // Colors
+            // Colors — track whether variable is local (apply by id) or library (apply by key)
             if (n.fills && n.fills.length > 0) {
                 n.fills.forEach((fill, index) => {
                     if (fill.type === 'SOLID' && fill.color && !fill.colorVariableId) {
                         const closest = findClosestColor(fill.color.r, fill.color.g, fill.color.b, colorVars);
-                        if (closest) colorItems.push({ nodeId: n.id, variableId: closest.id, fillIndex: index });
+                        if (closest) {
+                            if (closest._source === 'library' && closest.key) {
+                                colorItems.push({ nodeId: n.id, variableKey: closest.key, fillIndex: index, _byKey: true });
+                            } else {
+                                colorItems.push({ nodeId: n.id, variableId: closest.id, fillIndex: index });
+                            }
+                        }
                     }
                 });
             }
@@ -242,38 +267,70 @@ async function processStandardization(nodeId, prefetched = null) {
                 spacingFields.forEach(field => {
                     if (n[field] != null && !(n.boundVariables && n.boundVariables[field])) {
                         const closest = findClosestFloat(n[field], 'spacing', floatVars);
-                        if (closest) bindingItems.push({ nodeId: n.id, field, variableId: closest.id });
+                        if (closest) {
+                            if (closest._source === 'library' && closest.key) {
+                                bindingItems.push({ nodeId: n.id, field, variableKey: closest.key, _byKey: true });
+                            } else {
+                                bindingItems.push({ nodeId: n.id, field, variableId: closest.id });
+                            }
+                        }
                     }
                 });
                 radiusFields.forEach(field => {
                     if (n[field] != null && !(n.boundVariables && n.boundVariables[field])) {
                         const closest = findClosestFloat(n[field], 'radius', floatVars);
-                        if (closest) bindingItems.push({ nodeId: n.id, field, variableId: closest.id });
+                        if (closest) {
+                            if (closest._source === 'library' && closest.key) {
+                                bindingItems.push({ nodeId: n.id, field, variableKey: closest.key, _byKey: true });
+                            } else {
+                                bindingItems.push({ nodeId: n.id, field, variableId: closest.id });
+                            }
+                        }
                     }
                 });
             }
-
-            // Clip content
-            if (['FRAME', 'COMPONENT', 'COMPONENT_SET', 'INSTANCE', 'GROUP', 'SECTION'].includes(n.type)) {
-                propertyItems.push({ nodeId: n.id, field: 'clipsContent', value: true });
-            }
         });
+
+        const colorLocal  = colorItems.filter(x => !x._byKey);
+        const colorByKey  = colorItems.filter(x =>  x._byKey);
+        const bindLocal   = bindingItems.filter(x => !x._byKey);
+        const bindByKey   = bindingItems.filter(x =>  x._byKey);
 
         console.log(`\nPrepared updates for ${nodeId}:`);
         console.log(`  ${renameItems.length} renames`);
         console.log(`  ${textStyleItems.length} text styles`);
-        console.log(`  ${colorItems.length} color binds`);
-        console.log(`  ${bindingItems.length} layout bindings`);
-        console.log(`  ${propertyItems.length} clip content\n`);
+        console.log(`  ${colorLocal.length} color binds (local) + ${colorByKey.length} (library)`);
+        console.log(`  ${bindLocal.length} layout bindings (local) + ${bindByKey.length} (library)\n`);
+
+        // Pre-import all unique library variable keys in one parallelized shot,
+        // then swap variableKey → variableId so we can use the fast local-ID commands.
+        const allLibraryKeys = [...new Set([
+            ...colorByKey.map(x => x.variableKey),
+            ...bindByKey.map(x => x.variableKey),
+        ])];
+        let keyToId = {};
+        if (allLibraryKeys.length > 0) {
+            console.log(`  Pre-importing ${allLibraryKeys.length} unique library variable keys...`);
+            keyToId = await sendCommand('import_variables_by_key', { keys: allLibraryKeys }, STANDARDIZE_TIMEOUT_MS);
+            const resolved = Object.values(keyToId).filter(Boolean).length;
+            console.log(`  Resolved ${resolved}/${allLibraryKeys.length} keys to local IDs.\n`);
+        }
+
+        const colorResolved = colorByKey
+            .filter(x => keyToId[x.variableKey])
+            .map(x => ({ nodeId: x.nodeId, variableId: keyToId[x.variableKey], fillIndex: x.fillIndex }));
+        const bindResolved  = bindByKey
+            .filter(x => keyToId[x.variableKey])
+            .map(x => ({ nodeId: x.nodeId, field: x.field, variableId: keyToId[x.variableKey] }));
 
         if (renameItems.length)    await sendCommand('bulk_rename', { renames: renameItems });
         if (textStyleItems.length) await sendCommand('bulk_apply_text_style', { items: textStyleItems });
-        if (colorItems.length)     await sendCommand('bulk_apply_fill_variable', { items: colorItems });
+        if (colorLocal.length)     await sendCommand('bulk_apply_fill_variable', { items: colorLocal });
+        if (colorResolved.length)  await sendCommand('bulk_apply_fill_variable', { items: colorResolved });
 
-        for (let i = 0; i < bindingItems.length; i += BULK_BINDING_CHUNK)
-            await sendCommand('bulk_set_variable_binding', { items: bindingItems.slice(i, i + BULK_BINDING_CHUNK) });
-        for (let i = 0; i < propertyItems.length; i += BULK_BINDING_CHUNK)
-            await sendCommand('bulk_set_property', { items: propertyItems.slice(i, i + BULK_BINDING_CHUNK) });
+        const allBindings = [...bindLocal, ...bindResolved];
+        for (let i = 0; i < allBindings.length; i += BULK_BINDING_CHUNK)
+            await sendCommand('bulk_set_variable_binding', { items: allBindings.slice(i, i + BULK_BINDING_CHUNK) });
 
         console.log('Done.');
     } catch (err) {
@@ -358,49 +415,6 @@ async function setLineHeightAuto() {
     }
 }
 
-async function setCustomLineHeight() {
-    try {
-        console.log('Fetching local styles...');
-        const styles = await sendCommand('get_local_styles', {});
-        
-        if (!styles.textStyles || styles.textStyles.length === 0) {
-            console.log('No text styles found.');
-            return;
-        }
-
-        const items = styles.textStyles.map(style => {
-            const isTitle = style.name.toLowerCase().includes('text-title');
-            return {
-                styleId: style.id,
-                field: 'lineHeight',
-                value: isTitle ? { unit: 'AUTO' } : { unit: 'PERCENT', value: 150 }
-            };
-        });
-
-        console.log(`Setting custom line heights for ${items.length} styles in chunks...`);
-        const results = [];
-        const chunkSize = 2; // Small chunk size to avoid plugin timeouts
-        
-        for (let i = 0; i < items.length; i += chunkSize) {
-            const chunk = items.slice(i, i + chunkSize);
-            console.log(`Processing chunk ${i / chunkSize + 1} of ${Math.ceil(items.length / chunkSize)}...`);
-            const chunkResults = await sendCommand('bulk_set_style_property', { items: chunk }, 300000);
-            results.push(...chunkResults);
-        }
-        
-        const successCount = results.filter(r => r.ok).length;
-        console.log(`Successfully updated ${successCount}/${items.length} styles.`);
-        
-        const failures = results.filter(r => !r.ok);
-        if (failures.length > 0) {
-            console.log('Failures:');
-            failures.forEach(f => console.log(`Style ${f.styleId} failed: ${f.error}`));
-        }
-    } catch (err) {
-        console.error('Error:', err.message);
-    }
-}
-
 function toTitleCase(str) {
     return str.replace(/\w\S*/g, function(txt) {
         return txt.charAt(0).toUpperCase() + txt.substring(1).toLowerCase();
@@ -412,14 +426,13 @@ async function titleCaseText(nodeId) {
         console.log(`Fetching text nodes in ${nodeId}...`);
         const nodes = await fetchNodes(nodeId);
         const textNodes = nodes.filter(n => n.type === 'TEXT');
-        
+
         if (textNodes.length === 0) {
             console.log('No text nodes found.');
             return;
         }
 
         const textUpdates = [];
-        const propertyUpdates = [];
 
         textNodes.forEach(n => {
             if (n.text) {
@@ -428,17 +441,12 @@ async function titleCaseText(nodeId) {
                     textUpdates.push({ nodeId: n.id, text: titleCased });
                 }
             }
-            propertyUpdates.push({ nodeId: n.id, field: 'lineHeight', value: { unit: 'PERCENT', value: 150 } });
         });
 
-        console.log(`Found ${textNodes.length} text nodes. Applying title case to ${textUpdates.length} nodes and setting 150% line height to all.`);
+        console.log(`Found ${textNodes.length} text nodes. Applying title case to ${textUpdates.length} nodes.`);
 
         if (textUpdates.length > 0) {
             await sendCommand('bulk_set_characters', { items: textUpdates }, 300000);
-        }
-        
-        for (let i = 0; i < propertyUpdates.length; i += BULK_BINDING_CHUNK) {
-            await sendCommand('bulk_set_property', { items: propertyUpdates.slice(i, i + BULK_BINDING_CHUNK) }, 300000);
         }
         console.log('Done.');
     } catch (err) {
@@ -488,6 +496,62 @@ async function bindFillsToVariables(nodeId) {
     }
 }
 
+async function flattenTree(nodeId) {
+    console.log(`Analyzing tree for ${nodeId} to find unnecessary nesting...`);
+    const response = await sendCommand('get_nodes', { nodeId, depth: 10 });
+    
+    let root = Array.isArray(response) ? response[0] : response;
+    if (!root) {
+        console.error('No nodes found or plugin timed out.', response);
+        return;
+    }
+
+    let flattenedCount = 0;
+
+    // Returns true if the node id looks like an instance override (e.g. "I1234:5678;...")
+    const isInstanceNode = id => id.startsWith('I') || id.includes(';');
+
+    async function traverse(node) {
+        // Never descend into or modify component instances
+        if (node.type === 'INSTANCE' || isInstanceNode(node.id)) return;
+
+        if (node.children && node.children.length > 0) {
+            // Snapshot children before traversal — flattening siblings can invalidate later entries
+            for (const child of [...node.children]) {
+                await traverse(child);
+            }
+        }
+
+        if (!node.children) return;
+
+        if (['FRAME', 'GROUP'].includes(node.type) && node.id !== nodeId) {
+            const isWrapper = node.children.length === 1;
+            const hasFills = node.fills && node.fills.length > 0 && node.fills.some(f => f.visible && f.opacity > 0);
+            const hasStrokes = node.strokes && node.strokes.length > 0 && node.strokes.some(s => s.visible && s.opacity > 0);
+            const hasPadding = (node.paddingTop || 0) > 0 || (node.paddingRight || 0) > 0
+                             || (node.paddingBottom || 0) > 0 || (node.paddingLeft || 0) > 0;
+            const hasRadius = (node.cornerRadius || 0) > 0
+                            || (node.topLeftRadius || 0) > 0 || (node.topRightRadius || 0) > 0
+                            || (node.bottomRightRadius || 0) > 0 || (node.bottomLeftRadius || 0) > 0;
+            const hasEffects = node.effects && node.effects.some(e => e.visible !== false);
+            const hasOpacity = node.opacity !== undefined && node.opacity < 1;
+
+            if (isWrapper && !hasFills && !hasStrokes && !hasPadding && !hasRadius && !hasEffects && !hasOpacity) {
+                console.log(`Flattening unnecessary wrapper: ${node.name} (${node.id})`);
+                try {
+                    await sendCommand('flatten_node', { nodeId: node.id });
+                    flattenedCount++;
+                } catch (err) {
+                    console.error(`Failed to flatten ${node.id}: ${err.message}`);
+                }
+            }
+        }
+    }
+
+    await traverse(root);
+    console.log(`Flattening complete. Removed ${flattenedCount} unnecessary wrappers.`);
+}
+
 // ─── CLI entry (only runs when executed directly, not when require()'d) ────────
 
 if (require.main === module) {
@@ -504,9 +568,9 @@ Commands:
   standardize-file                Run standardization on every page and frame in the file
   clean                           Delete all files from the temp/ folder
   set-line-height-auto            Set the line height of all local text styles to AUTO
-  set-custom-line-height          Set text styles to 150% line height, except 'text-title' (Auto)
-  title-case-text <nodeId>        Update text layers in selection to Title Case & 150% line height
+  title-case-text <nodeId>        Update text layers in a frame to Title Case
   bind-fills-to-variables <nodeId> Bind all solid fills in a node to the nearest semantic color variables
+  flatten <nodeId>                Remove unnecessary wrapper frames/groups that have only 1 child
 `);
         process.exit(0);
     }
@@ -520,14 +584,15 @@ Commands:
         standardizeFile().catch(err => { console.error(err.message); process.exit(1); });
     } else if (cmd === 'set-line-height-auto') {
         setLineHeightAuto().catch(err => { console.error(err.message); process.exit(1); });
-    } else if (cmd === 'set-custom-line-height') {
-        setCustomLineHeight().catch(err => { console.error(err.message); process.exit(1); });
     } else if (cmd === 'title-case-text') {
         if (!targetId) { console.error('Error: provide a nodeId'); process.exit(1); }
         titleCaseText(targetId).catch(err => { console.error(err.message); process.exit(1); });
     } else if (cmd === 'bind-fills-to-variables') {
         if (!targetId) { console.error('Error: provide a nodeId'); process.exit(1); }
         bindFillsToVariables(targetId).catch(err => { console.error(err.message); process.exit(1); });
+    } else if (cmd === 'flatten') {
+        if (!targetId) { console.error('Error: provide a nodeId'); process.exit(1); }
+        flattenTree(targetId).catch(err => { console.error(err.message); process.exit(1); });
     } else if (cmd === 'clean') {
         if (!fs.existsSync(TEMP_DIR)) {
             console.log('Temp folder is empty — nothing to clean.');

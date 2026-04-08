@@ -2,14 +2,21 @@ const WebSocket = require('ws');
 const fs = require('fs');
 const path = require('path');
 
+process.on('uncaughtException', (err) => {
+  console.error('UNCAUGHT EXCEPTION:', err);
+});
+process.on('unhandledRejection', (err) => {
+  console.error('UNHANDLED REJECTION:', err);
+});
+
 const PORT = 9001;
 const wss = new WebSocket.Server({ port: PORT });
 
 const plugins = new Map(); // fileKey → { ws, name }
 const pending = new Map(); // id → { sender: ws, fileKey, createdAt }
 
-// Purge pending entries that have been waiting longer than 30s (e.g. hung plugin)
-const PENDING_TTL_MS = 30000;
+// Purge pending entries that have been waiting longer than 120s (e.g. hung plugin)
+const PENDING_TTL_MS = 120000;
 setInterval(() => {
   const now = Date.now();
   for (const [id, entry] of pending) {

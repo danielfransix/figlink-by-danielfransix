@@ -56,6 +56,9 @@ async function handleCommand(command, params) {
     case 'get_local_styles':
       return getLocalStyles();
 
+    case 'get_all_available_styles':
+      return getAllAvailableStyles();
+
     case 'get_local_variables':
       return getLocalVariables();
 
@@ -117,6 +120,28 @@ async function handleCommand(command, params) {
     case 'bulk_apply_fill_variable':
       return bulkApplyFillVariable(params.items);
 
+    case 'bulk_apply_fill_variable_by_key':
+      return await bulkApplyFillVariableByKey(params.items);
+
+    case 'bulk_set_variable_binding_by_key':
+      return await bulkSetVariableBindingByKey(params.items);
+
+    case 'import_variables_by_key': {
+      // Pre-import an array of variable keys, return { key → localId } map.
+      const BATCH = 20;
+      const keyToId = {};
+      const keys = params.keys || [];
+      for (let i = 0; i < keys.length; i += BATCH) {
+        await Promise.all(keys.slice(i, i + BATCH).map(async (k) => {
+          try {
+            const v = await figma.variables.importVariableByKeyAsync(k);
+            keyToId[k] = v.id;
+          } catch (e) { keyToId[k] = null; }
+        }));
+      }
+      return keyToId;
+    }
+
     case 'bulk_set_property':
       return bulkSetProperty(params.items);
 
@@ -165,9 +190,40 @@ async function handleCommand(command, params) {
     case 'group_as_component_set':
       return groupAsComponentSet(params.nodeIds, params.name, params.parentId);
 
+    case 'flatten_node':
+      return flattenNode(params.nodeId);
+
     default:
       throw new Error(`Unknown command: ${command}`);
   }
+}
+
+// ─── Flatten Node ────────────────────────────────────────────────────────────
+
+function flattenNode(nodeId) {
+  const node = figma.getNodeById(nodeId);
+  if (!node) throw new Error(`Node ${nodeId} not found`);
+  if (!node.parent) throw new Error(`Node ${nodeId} has no parent`);
+
+  const parent = node.parent;
+  const index = parent.children.indexOf(node);
+  const children = [...node.children]; // clone array before moving
+
+  for (const child of children) {
+    // Move child to the parent of the node, at the index of the node
+    parent.insertChild(index, child);
+
+    // In free-position parents, children need absolute coords in the parent's space
+    if (parent.layoutMode === 'NONE') {
+      child.x += node.x;
+      child.y += node.y;
+    }
+  }
+
+  // Remove the original node now that its children are moved
+  node.remove();
+
+  return { ok: true, flattenedNodeId: nodeId, newChildrenIds: children.map(c => c.id) };
 }
 
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -185,6 +241,10 @@ const SETTABLE_PROPERTIES = new Set([
   'cornerSmoothing', 'lineHeight', 'letterSpacing', 'paragraphSpacing', 'textCase', 'textDecoration',
   'reactions', 'scrollBehavior', 'overflowDirection', 'flowStartingPoints'
 ]);
+
+// Default font used as a fallback when a text node has mixed or unloadable fonts.
+// Change this to match the primary font family in your document if Inter is not available.
+const DEFAULT_FONT = { family: 'Inter', style: 'Regular' };
 
 // Font loading cache — avoids redundant figma.loadFontAsync calls within a session
 const _loadedFonts = new Set();
@@ -242,6 +302,10 @@ function serializeNode(node, depth) {
   };
 
   if ('rotation' in node && node.rotation !== 0) base.rotation = node.rotation;
+  if ('opacity' in node && node.opacity !== 1) base.opacity = node.opacity;
+  if ('effects' in node && node.effects.length > 0) {
+    base.effects = node.effects.map(e => ({ type: e.type, visible: e.visible !== false }));
+  }
   if ('layoutPositioning' in node && node.layoutPositioning === 'ABSOLUTE') base.layoutPositioning = node.layoutPositioning;
   if ('layoutAlign' in node) base.layoutAlign = node.layoutAlign;
   if ('layoutGrow' in node) base.layoutGrow = node.layoutGrow;
@@ -449,6 +513,45 @@ function getLocalStyles() {
   return { textStyles, colorStyles };
 }
 
+function serializeTextStyle(s) {
+  return {
+    id: s.id,
+    name: s.name,
+    fontSize: s.fontSize,
+    fontWeight: s.fontName ? s.fontName.style : null,
+    fontFamily: s.fontName ? s.fontName.family : null,
+  };
+}
+
+// Returns all text styles available in the document — local + any library styles
+// found in use on the current page (library styles aren't exposed via getLocalTextStyles).
+function getAllAvailableStyles() {
+  const stylesById = new Map();
+
+  for (const s of figma.getLocalTextStyles()) {
+    stylesById.set(s.id, serializeTextStyle(s));
+  }
+
+  // Walk the current page to discover any library text styles in use
+  function walk(node) {
+    if (node.type === 'TEXT') {
+      const tsId = node.textStyleId;
+      if (tsId && tsId !== figma.mixed && !stylesById.has(tsId)) {
+        try {
+          const s = figma.getStyleById(tsId);
+          if (s) stylesById.set(tsId, serializeTextStyle(s));
+        } catch (e) { /* style not resolvable — skip */ }
+      }
+    }
+    if ('children' in node) {
+      for (const child of node.children) walk(child);
+    }
+  }
+  walk(figma.currentPage);
+
+  return { textStyles: [...stylesById.values()] };
+}
+
 function getLocalVariables() {
   const collections = figma.variables.getLocalVariableCollections().map((c) => ({
     id: c.id,
@@ -459,6 +562,7 @@ function getLocalVariables() {
 
   const variables = figma.variables.getLocalVariables().map((v) => ({
     id: v.id,
+    key: v.key,
     name: v.name,
     resolvedType: v.resolvedType,
     collectionId: v.variableCollectionId,
@@ -478,25 +582,32 @@ async function getAllAvailableVariables() {
     valuesByMode: v.valuesByMode,
   }));
 
-  // 2. Library variables from all connected team libraries
+  // 2. Library variables from all connected team libraries (parallelized in batches)
+  const IMPORT_BATCH = 20;
   const libraryVars = [];
   try {
     const collections = await figma.teamLibrary.getAvailableLibraryVariableCollectionsAsync();
     for (const collection of collections) {
       const vars = await figma.teamLibrary.getVariablesInLibraryCollectionAsync(collection.key);
-      for (const libVar of vars) {
-        // Only import COLOR and FLOAT — BOOLEAN/STRING aren't needed for standardization
-        if (libVar.resolvedType !== 'COLOR' && libVar.resolvedType !== 'FLOAT') continue;
-        try {
-          const imported = await figma.variables.importVariableByKeyAsync(libVar.key);
-          libraryVars.push({
-            id: imported.id,
-            name: libVar.name,
-            resolvedType: libVar.resolvedType,
-            collectionId: imported.variableCollectionId,
-            valuesByMode: imported.valuesByMode,
-          });
-        } catch (e) { console.warn(`[Figlink] Could not import variable "${libVar.name}" (${libVar.key}): ${e.message}`); }
+      const targets = vars.filter(v => v.resolvedType === 'COLOR' || v.resolvedType === 'FLOAT');
+      for (let i = 0; i < targets.length; i += IMPORT_BATCH) {
+        const batch = targets.slice(i, i + IMPORT_BATCH);
+        const results = await Promise.all(batch.map(async (libVar) => {
+          try {
+            const imported = await figma.variables.importVariableByKeyAsync(libVar.key);
+            return {
+              id: imported.id,
+              name: libVar.name,
+              resolvedType: libVar.resolvedType,
+              collectionId: imported.variableCollectionId,
+              valuesByMode: imported.valuesByMode,
+            };
+          } catch (e) {
+            console.warn(`[Figlink] Could not import variable "${libVar.name}" (${libVar.key}): ${e.message}`);
+            return null;
+          }
+        }));
+        libraryVars.push(...results.filter(Boolean));
       }
     }
   } catch (e) { console.warn(`[Figlink] Could not fetch team library variable collections: ${e.message}`); }
@@ -523,7 +634,7 @@ async function applyTextStyle(nodeId, styleId) {
 
   // Ensure font is loaded before mutating
   const fontName = isMixed(node.fontName)
-    ? { family: 'Inter', style: 'Regular' }
+    ? DEFAULT_FONT
     : node.fontName;
   await ensureFontLoaded(fontName);
 
@@ -606,6 +717,63 @@ function bulkSetVariableBinding(items) {
   return results;
 }
 
+// Import library variables by key in parallel batches, then apply fills.
+// items: [{ variableKey, nodeId, fillIndex }]
+async function bulkApplyFillVariableByKey(items) {
+  const BATCH = 15;
+  const results = [];
+  // Deduplicate imports — cache key → imported variable id
+  const keyToId = {};
+  for (let i = 0; i < items.length; i += BATCH) {
+    const batch = items.slice(i, i + BATCH);
+    await Promise.all(batch.map(async (item) => {
+      if (!keyToId[item.variableKey]) {
+        try {
+          const v = await figma.variables.importVariableByKeyAsync(item.variableKey);
+          keyToId[item.variableKey] = v.id;
+        } catch (e) {
+          keyToId[item.variableKey] = null;
+        }
+      }
+    }));
+    for (const item of batch) {
+      const varId = keyToId[item.variableKey];
+      if (!varId) { results.push({ ok: false, nodeId: item.nodeId, error: 'import failed' }); continue; }
+      try { results.push(applyFillVariable(item.nodeId, varId, item.fillIndex || 0)); }
+      catch (e) { results.push({ ok: false, nodeId: item.nodeId, error: e.message }); }
+    }
+  }
+  return results;
+}
+
+// Import library variables by key in parallel batches, then apply layout/radius bindings.
+// items: [{ variableKey, nodeId, field }]
+async function bulkSetVariableBindingByKey(items) {
+  const BATCH = 15;
+  const results = [];
+  const keyToId = {};
+  for (let i = 0; i < items.length; i += BATCH) {
+    const batch = items.slice(i, i + BATCH);
+    await Promise.all(batch.map(async (item) => {
+      if (!keyToId[item.variableKey]) {
+        try {
+          const v = await figma.variables.importVariableByKeyAsync(item.variableKey);
+          keyToId[item.variableKey] = v.id;
+        } catch (e) {
+          keyToId[item.variableKey] = null;
+        }
+      }
+    }));
+    for (const item of batch) {
+      const varId = keyToId[item.variableKey];
+      if (!varId) { results.push({ ok: false, nodeId: item.nodeId, error: 'import failed' }); continue; }
+      try { results.push(setVariableBinding(item.nodeId, item.field, varId)); }
+      catch (e) { results.push({ ok: false, nodeId: item.nodeId, error: e.message }); }
+    }
+  }
+  return results;
+}
+
 function removeVariableBinding(nodeId, field) {
   const node = figma.getNodeById(nodeId);
   if (!node) throw new Error(`Node ${nodeId} not found`);
@@ -678,7 +846,7 @@ async function setCharacters(nodeId, text) {
   const node = figma.getNodeById(nodeId);
   if (!node) throw new Error(`Node ${nodeId} not found`);
   if (node.type !== 'TEXT') throw new Error(`Node ${nodeId} is not a TEXT node`);
-  const fontName = isMixed(node.fontName) ? { family: 'Inter', style: 'Regular' } : node.fontName;
+  const fontName = isMixed(node.fontName) ? DEFAULT_FONT : node.fontName;
   await ensureFontLoaded(fontName);
   const oldText = node.characters;
   node.characters = text;
@@ -702,7 +870,7 @@ async function duplicateTextStyle(styleId, newName, overrides) {
   if (!src) throw new Error(`Style ${styleId} not found`);
   if (src.type !== 'TEXT') throw new Error(`Style ${styleId} is not a text style`);
 
-  await ensureFontLoaded({ family: 'Inter', style: 'Regular' });
+  await ensureFontLoaded(DEFAULT_FONT);
   await ensureFontLoaded(src.fontName);
 
   const s = figma.createTextStyle();
@@ -978,7 +1146,7 @@ async function swapButtonInstances(containerId, newComponentSetId) {
       if (oldText) {
           const newTextNode = instance.findOne(n => n.type === 'TEXT');
           if (newTextNode) {
-              const fontName = isMixed(newTextNode.fontName) ? { family: 'Inter', style: 'Regular' } : newTextNode.fontName;
+              const fontName = isMixed(newTextNode.fontName) ? DEFAULT_FONT : newTextNode.fontName;
               await ensureFontLoaded(fontName);
               newTextNode.characters = oldText;
           }
@@ -1019,7 +1187,7 @@ function makeStroke(s) {
 async function applyNodeProps(node, props) {
   // Load font before any text operations
   if (node.type === 'TEXT') {
-    const fn = props.fontName || { family: 'Inter', style: 'Regular' };
+    const fn = props.fontName || DEFAULT_FONT;
     await ensureFontLoaded(fn);
     node.fontName = fn;
   }
@@ -1039,7 +1207,7 @@ async function applyNodeProps(node, props) {
       } else if (key === 'strokes') {
         node.strokes = value.map(makeStroke);
       } else if (key === 'characters') {
-        const fn = isMixed(node.fontName) ? { family: 'Inter', style: 'Regular' } : node.fontName;
+        const fn = isMixed(node.fontName) ? DEFAULT_FONT : node.fontName;
         await ensureFontLoaded(fn);
         node.characters = value;
       } else if (key === 'effects') {
