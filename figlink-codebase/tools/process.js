@@ -51,7 +51,7 @@ if (_fileIdx !== -1) {
 
 // ─── WebSocket helper ─────────────────────────────────────────────────────────
 
-async function sendCommand(command, params, timeoutMs = 180000) {
+async function sendCommand(command, params, timeoutMs = 180000, overrideFileKey = null) {
     return new Promise((resolve, reject) => {
         const ws = new WebSocket(WS_URL);
         const id = randomUUID();
@@ -66,7 +66,8 @@ async function sendCommand(command, params, timeoutMs = 180000) {
 
         ws.on('open', () => {
             const msg = { id, command, params };
-            if (targetFileKey) msg.fileKey = targetFileKey;
+            const fileKey = overrideFileKey || targetFileKey;
+            if (fileKey) msg.fileKey = fileKey;
             ws.send(JSON.stringify(msg));
         });
 
@@ -496,6 +497,34 @@ async function bindFillsToVariables(nodeId) {
     }
 }
 
+async function cacheLibraryVariables(libraryFileKey) {
+    if (!libraryFileKey) {
+        console.error('Error: provide the fileKey of the connected library file.');
+        console.error('  Usage: node tools/process.js cache-library-variables <libraryFileKey>');
+        console.error('  Tip:   run node tools/figma.js list_connected_files to see connected fileKeys');
+        process.exit(1);
+    }
+    console.log(`Fetching local variables from library file "${libraryFileKey}"...`);
+    // get_local_variables on the library file returns variables WITH key fields,
+    // which is required for the standardize pipeline to import them by key.
+    // get_all_available_variables does NOT include key fields and cannot be used for binding.
+    const result = await sendCommand('get_local_variables', {}, STANDARDIZE_TIMEOUT_MS, libraryFileKey);
+    const vars = result.variables || result;
+    if (!Array.isArray(vars) || vars.length === 0) {
+        console.error('No variables returned. Is the plugin open in that file?');
+        process.exit(1);
+    }
+    const outPath = path.join(TEMP_DIR, 'library-variables.json');
+    fs.mkdirSync(TEMP_DIR, { recursive: true });
+    fs.writeFileSync(outPath, JSON.stringify({ variables: vars }, null, 2));
+    const colorCount   = vars.filter(v => v.resolvedType === 'COLOR').length;
+    const floatCount   = vars.filter(v => v.resolvedType === 'FLOAT').length;
+    const stringCount  = vars.filter(v => v.resolvedType === 'STRING').length;
+    console.log(`Saved ${vars.length} variables to temp/library-variables.json`);
+    console.log(`  COLOR: ${colorCount}  FLOAT: ${floatCount}  STRING: ${stringCount}`);
+    console.log(`Run "node tools/process.js standardize <nodeId>" to apply them.`);
+}
+
 async function flattenTree(nodeId) {
     console.log(`Analyzing tree for ${nodeId} to find unnecessary nesting...`);
     const response = await sendCommand('get_nodes', { nodeId, depth: 10 });
@@ -566,6 +595,8 @@ Commands:
   standardize <nodeId>            Run the full standardization suite on a frame
   standardize-page                Run standardization on every frame on the current page
   standardize-file                Run standardization on every page and frame in the file
+  cache-library-variables <fileKey> Fetch variables (with keys) from a connected library file and save
+                                  to temp/library-variables.json for use by standardize
   clean                           Delete all files from the temp/ folder
   set-line-height-auto            Set the line height of all local text styles to AUTO
   title-case-text <nodeId>        Update text layers in a frame to Title Case
@@ -593,6 +624,8 @@ Commands:
     } else if (cmd === 'flatten') {
         if (!targetId) { console.error('Error: provide a nodeId'); process.exit(1); }
         flattenTree(targetId).catch(err => { console.error(err.message); process.exit(1); });
+    } else if (cmd === 'cache-library-variables') {
+        cacheLibraryVariables(targetId).catch(err => { console.error(err.message); process.exit(1); });
     } else if (cmd === 'clean') {
         if (!fs.existsSync(TEMP_DIR)) {
             console.log('Temp folder is empty — nothing to clean.');
