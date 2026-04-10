@@ -196,6 +196,12 @@ async function handleCommand(command, params) {
     case 'reset_instance_spacing':
       return resetInstanceSpacing(params.nodeId);
 
+    case 'reset_instance_text_styles':
+      return resetInstanceTextStyles(params.nodeId);
+
+    case 'unclip_text_parent_frames':
+      return unclipTextParentFrames(params.nodeId);
+
     default:
       throw new Error(`Unknown command: ${command}`);
   }
@@ -257,6 +263,81 @@ function resetInstanceSpacing(nodeId) {
   }
 
   return { ok: true, instancesModified, fieldsReset, rootId: root.id, rootName: root.name };
+}
+
+// ─── Reset Instance Text Styles ──────────────────────────────────────────────
+
+// Walk from a node up to a root, recording the child index at each level.
+// Then replay that path in the master to find the corresponding node.
+function findCorrespondingMasterNode(node, instanceRoot, masterRoot) {
+  const path = [];
+  let cur = node;
+  while (cur && cur.id !== instanceRoot.id) {
+    const parent = cur.parent;
+    if (!parent) return null;
+    const idx = parent.children ? parent.children.indexOf(cur) : -1;
+    if (idx === -1) return null;
+    path.unshift(idx);
+    cur = parent;
+  }
+  let masterNode = masterRoot;
+  for (const idx of path) {
+    if (!masterNode.children || idx >= masterNode.children.length) return null;
+    masterNode = masterNode.children[idx];
+  }
+  return masterNode;
+}
+
+function resetInstanceTextStyles(nodeId) {
+  const root = nodeId ? figma.getNodeById(nodeId) : figma.currentPage;
+  if (!root) throw new Error(`Node ${nodeId} not found`);
+
+  const instances = root.findAll(n => n.type === 'INSTANCE');
+
+  let textsModified = 0;
+
+  for (const inst of instances) {
+    const master = inst.mainComponent;
+    if (!master) continue;
+
+    const textNodes = inst.findAll(n => n.type === 'TEXT');
+    for (const textNode of textNodes) {
+      const masterText = findCorrespondingMasterNode(textNode, inst, master);
+      if (!masterText || masterText.type !== 'TEXT') continue;
+
+      const masterStyleId = masterText.textStyleId;
+      // Only sync when master has a definite style (non-empty, non-mixed)
+      if (!masterStyleId || masterStyleId === figma.mixed) continue;
+      if (textNode.textStyleId !== masterStyleId) {
+        textNode.textStyleId = masterStyleId;
+        textsModified++;
+      }
+    }
+  }
+
+  return { ok: true, textsModified, rootId: root.id, rootName: root.name };
+}
+
+// ─── Unclip Frames with Direct Text Children ─────────────────────────────────
+
+function unclipTextParentFrames(nodeId) {
+  const root = nodeId ? figma.getNodeById(nodeId) : figma.currentPage;
+  if (!root) throw new Error(`Node ${nodeId} not found`);
+
+  const CONTAINER_TYPES = new Set(['FRAME', 'COMPONENT', 'INSTANCE', 'COMPONENT_SET']);
+  let framesModified = 0;
+
+  const containers = root.findAll(n => CONTAINER_TYPES.has(n.type) && n.clipsContent === true);
+  for (const frame of containers) {
+    if (!frame.children) continue;
+    const hasDirectText = frame.children.some(c => c.type === 'TEXT');
+    if (hasDirectText) {
+      frame.clipsContent = false;
+      framesModified++;
+    }
+  }
+
+  return { ok: true, framesModified, rootId: root.id, rootName: root.name };
 }
 
 // ─── Constants ───────────────────────────────────────────────────────────────

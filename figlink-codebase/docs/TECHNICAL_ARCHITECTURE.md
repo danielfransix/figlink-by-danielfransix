@@ -118,7 +118,7 @@ Both `error` and `errorType` (`err.name`) are included in error responses.
 | Variables | `set_variable_binding`, `bulk_set_variable_binding`, `remove_variable_binding` |
 | Properties | `set_property`, `bulk_set_property` (supports layout, typography, prototyping, and advanced auto-layout properties) |
 | Styles | `duplicate_text_style`, `bulk_duplicate_text_style`, `set_style_property`, `bulk_set_style_property`, `set_style_variable_binding`, `bulk_set_style_variable_binding`, `delete_style`, `bulk_delete_style` |
-| Components | `reset_instance_spacing`, `clone_component_set`, `swap_button_instances` |
+| Components | `reset_instance_spacing`, `reset_instance_text_styles`, `unclip_text_parent_frames`, `clone_component_set`, `swap_button_instances` |
 | Structure | `create_node`, `create_node_tree`, `set_node_raw`, `delete_node`, `group_as_component_set`, `flatten_node` |
 
 **Key implementation details:**
@@ -140,6 +140,8 @@ Both `error` and `errorType` (`err.name`) are included in error responses.
 - `cloneComponentSet` — marks unwanted variant components as `name: "DELETE_ME", visible: false` rather than deleting immediately, because immediate deletion in a COMPONENT_SET can corrupt the set in some Figma versions.
 - `swapButtonInstances` — finds instances in the container with "button" in their name, matches variant properties by name parsing, swaps component, restores text, adjusts layout constraints.
 - `resetInstanceSpacing(nodeId)` — walks the subtree rooted at `nodeId` (or current page if omitted) with `findAll`, collecting all `INSTANCE` nodes that have auto-layout (`layoutMode !== 'NONE'`). For each instance, reads `mainComponent` and compares `paddingTop`, `paddingRight`, `paddingBottom`, `paddingLeft`, `itemSpacing`, and `counterAxisSpacing` against the master. Any field that differs is reset to the master's value. Fields that already match are left untouched. Returns `{ instancesModified, fieldsReset, rootId, rootName }`. **Note:** `findAll` on a large page can exceed the 15 s CLI timeout in `tools/figma.js` — use the inline WebSocket script pattern with a 120 s timeout for page-scale operations.
+- `resetInstanceTextStyles(nodeId)` — finds all `INSTANCE` nodes in the subtree, then for each instance finds all descendant `TEXT` nodes. Locates the corresponding text node in the `mainComponent` by replaying the child-index path from instance root to text node (`findCorrespondingMasterNode`). If the master text has a definite `textStyleId` (non-empty, non-mixed) and the instance text differs, resets the instance text's `textStyleId` to match. Returns `{ textsModified, rootId, rootName }`.
+- `unclipTextParentFrames(nodeId)` — finds all container nodes (`FRAME`, `COMPONENT`, `INSTANCE`, `COMPONENT_SET`) in the subtree that currently have `clipsContent: true` and have at least one direct `TEXT` child. Sets `clipsContent = false` on those nodes. Returns `{ framesModified, rootId, rootName }`.
 
 ---
 

@@ -41,6 +41,8 @@ node tools/figma.js set_current_page '{"pageId":"<id>"}'
 | `set_node_raw` | figma.js | Update a node's properties |
 | `delete_node` | figma.js | Remove a node |
 | `reset_instance_spacing` | figma.js | Restore spacing overrides on instances to match their master component |
+| `reset_instance_text_styles` | figma.js | Restore text style overrides on texts inside instances to match their master component |
+| `unclip_text_parent_frames` | figma.js | Turn off clip content on any frame that has a direct TEXT child |
 | `standardize <nodeId>` | process.js | Run full standardization on a frame |
 | `standardize-page` | process.js | Standardize all frames on current page |
 | `clean` | process.js | Wipe the temp/ folder |
@@ -83,10 +85,9 @@ ws.on('error', (e) => { if (!done) { console.error(e.message); process.exit(1); 
 
 ---
 
-## Design Principles
+## Working Principles
 
-- **Plan before executing** — write a layout plan to `temp/` before creating nodes
-- **Build order** — atomic components → organism components → page frames
-- **Auto layout everywhere** — use `layoutMode: 'HORIZONTAL'` or `'VERTICAL'` on every container; never absolute-position elements that should be responsive
-- **Naming** — lowercase with dashes (`primary-button`, `icon-card`); never spaces
-- **Exact values** — copy colors, spacing, and typography from the source; never approximate
+- **Read before writing** — inspect the existing file before making changes; match the conventions already present
+- **Plan before executing** — for non-trivial tasks, write a plan to `temp/` before creating or modifying nodes
+- **Exact values** — when sourcing data (CSS, a live file, an API), use the real values; never approximate
+- **Minimal footprint** — only change what was asked; do not apply style conventions or structural opinions beyond the user's request
