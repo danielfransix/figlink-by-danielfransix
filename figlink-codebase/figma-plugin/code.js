@@ -193,6 +193,9 @@ async function handleCommand(command, params) {
     case 'flatten_node':
       return flattenNode(params.nodeId);
 
+    case 'reset_instance_spacing':
+      return resetInstanceSpacing(params.nodeId);
+
     default:
       throw new Error(`Unknown command: ${command}`);
   }
@@ -224,6 +227,36 @@ function flattenNode(nodeId) {
   node.remove();
 
   return { ok: true, flattenedNodeId: nodeId, newChildrenIds: children.map(c => c.id) };
+}
+
+// ─── Reset Instance Spacing ──────────────────────────────────────────────────
+
+function resetInstanceSpacing(nodeId) {
+  const root = nodeId ? figma.getNodeById(nodeId) : figma.currentPage;
+  if (!root) throw new Error(`Node ${nodeId} not found`);
+
+  const SPACING_FIELDS = ['paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft', 'itemSpacing', 'counterAxisSpacing'];
+  const instances = root.findAll(n => n.type === 'INSTANCE' && n.layoutMode && n.layoutMode !== 'NONE');
+
+  let instancesModified = 0;
+  let fieldsReset = 0;
+
+  for (const inst of instances) {
+    const master = inst.mainComponent;
+    if (!master) continue;
+
+    let changed = false;
+    for (const field of SPACING_FIELDS) {
+      if (field in inst && field in master && inst[field] !== master[field]) {
+        inst[field] = master[field];
+        changed = true;
+        fieldsReset++;
+      }
+    }
+    if (changed) instancesModified++;
+  }
+
+  return { ok: true, instancesModified, fieldsReset, rootId: root.id, rootName: root.name };
 }
 
 // ─── Constants ───────────────────────────────────────────────────────────────

@@ -40,9 +40,37 @@ node tools/figma.js set_current_page '{"pageId":"<id>"}'
 | `create_node_tree` | figma.js | Create node(s) from a JSON tree |
 | `set_node_raw` | figma.js | Update a node's properties |
 | `delete_node` | figma.js | Remove a node |
+| `reset_instance_spacing` | figma.js | Restore spacing overrides on instances to match their master component |
 | `standardize <nodeId>` | process.js | Run full standardization on a frame |
 | `standardize-page` | process.js | Standardize all frames on current page |
 | `clean` | process.js | Wipe the temp/ folder |
+
+---
+
+## Large-Page Operations
+
+Some commands (e.g. `reset_instance_spacing`) use `findAll` across an entire page and can take longer than the 15 s default timeout in `tools/figma.js`. For these, use an inline script with a longer timeout:
+
+```javascript
+const WebSocket = require('./link-server/node_modules/ws');
+const { randomUUID } = require('crypto');
+const ws = new WebSocket('ws://localhost:9001');
+const id = randomUUID();
+const msg = { id, command: '<command>', params: { nodeId: '<id>' }, fileKey: '<fileKey>' };
+let done = false;
+const timeout = setTimeout(() => { if (!done) { console.error('TIMEOUT'); process.exit(1); } }, 120000);
+ws.on('open', () => ws.send(JSON.stringify(msg)));
+ws.on('message', (raw) => {
+  const res = JSON.parse(raw.toString());
+  if (res.type === 'active_prompt') return;
+  if (res.id !== id) return;
+  done = true; clearTimeout(timeout); ws.close();
+  if (res.error) { console.error(JSON.stringify({ error: res.error })); process.exit(1); }
+  console.log(JSON.stringify(res.result, null, 2));
+  process.exit(0);
+});
+ws.on('error', (e) => { if (!done) { console.error(e.message); process.exit(1); } });
+```
 
 ---
 

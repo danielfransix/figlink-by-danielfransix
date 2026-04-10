@@ -118,7 +118,8 @@ Both `error` and `errorType` (`err.name`) are included in error responses.
 | Variables | `set_variable_binding`, `bulk_set_variable_binding`, `remove_variable_binding` |
 | Properties | `set_property`, `bulk_set_property` (supports layout, typography, prototyping, and advanced auto-layout properties) |
 | Styles | `duplicate_text_style`, `bulk_duplicate_text_style`, `set_style_property`, `bulk_set_style_property`, `set_style_variable_binding`, `bulk_set_style_variable_binding`, `delete_style`, `bulk_delete_style` |
-| Advanced | `clone_component_set`, `swap_button_instances` |
+| Components | `reset_instance_spacing`, `clone_component_set`, `swap_button_instances` |
+| Structure | `create_node`, `create_node_tree`, `set_node_raw`, `delete_node`, `group_as_component_set`, `flatten_node` |
 
 **Key implementation details:**
 
@@ -138,6 +139,7 @@ Both `error` and `errorType` (`err.name`) are included in error responses.
 - All font loads use `ensureFontLoaded(fontName)` — `applyTextStyle`, `setCharacters`, `bulkSetCharacters`, `duplicateTextStyle`, `swapButtonInstances`.
 - `cloneComponentSet` — marks unwanted variant components as `name: "DELETE_ME", visible: false` rather than deleting immediately, because immediate deletion in a COMPONENT_SET can corrupt the set in some Figma versions.
 - `swapButtonInstances` — finds instances in the container with "button" in their name, matches variant properties by name parsing, swaps component, restores text, adjusts layout constraints.
+- `resetInstanceSpacing(nodeId)` — walks the subtree rooted at `nodeId` (or current page if omitted) with `findAll`, collecting all `INSTANCE` nodes that have auto-layout (`layoutMode !== 'NONE'`). For each instance, reads `mainComponent` and compares `paddingTop`, `paddingRight`, `paddingBottom`, `paddingLeft`, `itemSpacing`, and `counterAxisSpacing` against the master. Any field that differs is reset to the master's value. Fields that already match are left untouched. Returns `{ instancesModified, fieldsReset, rootId, rootName }`. **Note:** `findAll` on a large page can exceed the 15 s CLI timeout in `tools/figma.js` — use the inline WebSocket script pattern with a 120 s timeout for page-scale operations.
 
 ---
 
@@ -371,4 +373,5 @@ figlink/
 - **Mixed properties.** `figma.mixed` is serialized as `null`. Fields with mixed values are skipped during standardization matching.
 - **Vector payloads.** `skipVectors: true` is the default in `get_nodes_flat`. Large vector networks produce payloads that can approach WebSocket message size limits.
 - **Standardization is non-transactional.** If a batch command fails partway through, earlier chunks are already applied. There is no rollback.
+- **15 s CLI timeout insufficient for large-page operations.** `tools/figma.js` hard-codes a 15 s timeout. Commands that call `findAll` across a large page (e.g. `reset_instance_spacing` on a page with hundreds of instances) will exceed this. Use the inline WebSocket script pattern documented in `prompts/system.md` with a longer timeout (120 s recommended).
 - **Team library access requires Figma Organization plan.** `figma.teamLibrary` APIs are only available in paid plans. On free plans, `getAllAvailableVariables` will only return local variables; the library collection call fails with a warning.
