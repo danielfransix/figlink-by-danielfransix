@@ -43,9 +43,12 @@ node tools/figma.js set_current_page '{"pageId":"<id>"}'
 | `reset_instance_spacing` | figma.js | Restore spacing overrides on instances to match their master component |
 | `reset_instance_text_styles` | figma.js | Restore text style overrides on texts inside instances to match their master component |
 | `unclip_text_parent_frames` | figma.js | Turn off clip content on any frame that has a direct TEXT child |
+| `find_image_nodes` | figma.js | Find all nodes with IMAGE fills inside a frame `{"nodeId":"<id>"}` |
+| `export_node` | figma.js | Export a node as PNG/SVG, returns base64 `{"nodeId":"<id>","format":"PNG","scale":2}` |
 | `standardize <nodeId>` | process.js | Run full standardization on a frame |
 | `standardize-page` | process.js | Standardize all frames on current page |
 | `clean` | process.js | Wipe the temp/ folder |
+| `<frameNodeId> <outputDir>` | export.js | Find, rename, and export all image nodes from a frame to disk |
 
 ---
 

@@ -1,6 +1,9 @@
-# Figma Design System Processor
+# Figma Design System Processor — PaidLife Design System
 
-> **Note:** This is an optional follow-on workflow. Before following any of the instructions in this document, explicitly ask the user whether they want to run the design system standardization process. Confirm with them first — this guide describes a specific opinionated process that may not match what they want.
+> **Sample prompt — not a generic template.**
+> This file contains standardization rules written specifically for the **PaidLife design system** (e.g. naming conventions, token structures, title-text logic). If you are using FigLink with a different design system, treat this as a reference example and write your own version tailored to your system's tokens, style names, and conventions. Only the workflow structure (the commands and step order) is reusable as-is; the rules themselves are opinionated to PaidLife.
+
+> **Workflow note:** This is an optional follow-on workflow. Before following any of the instructions in this document, explicitly ask the user whether they want to run the design system standardization process. Confirm with them first — this guide describes a specific opinionated process that may not match what they want.
 
 ---
 

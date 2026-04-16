@@ -114,6 +114,9 @@ async function handleCommand(command, params) {
     case 'bulk_apply_text_style':
       return await bulkApplyTextStyle(params.items);
 
+    case 'bulk_apply_text_style_by_key':
+      return await bulkApplyTextStyleByKey(params.items);
+
     case 'bulk_set_variable_binding':
       return bulkSetVariableBinding(params.items);
 
@@ -201,6 +204,19 @@ async function handleCommand(command, params) {
 
     case 'unclip_text_parent_frames':
       return unclipTextParentFrames(params.nodeId);
+
+    case 'find_image_nodes':
+      return findImageNodes(params.nodeId);
+
+    case 'export_node':
+      return await exportNode(params.nodeId, params.format || 'PNG', params.scale || 2);
+
+    case 'figma_execute': {
+      // Execute arbitrary JS in the plugin context. params.code is a full JS expression or IIFE.
+      // eslint-disable-next-line no-eval
+      const result = eval(params.code);
+      return (result && typeof result.then === 'function') ? await result : result;
+    }
 
     default:
       throw new Error(`Unknown command: ${command}`);
@@ -338,6 +354,61 @@ function unclipTextParentFrames(nodeId) {
   }
 
   return { ok: true, framesModified, rootId: root.id, rootName: root.name };
+}
+
+// ─── Find Image Nodes ─────────────────────────────────────────────────────────
+
+function findImageNodes(nodeId) {
+  const root = nodeId ? figma.getNodeById(nodeId) : figma.currentPage;
+  if (!root) throw new Error(`Node ${nodeId} not found`);
+
+  const results = [];
+  const seenHashes = new Set();
+
+  function walk(node) {
+    const fills = node.fills;
+    if (fills && fills !== figma.mixed) {
+      for (const fill of fills) {
+        if (fill.type === 'IMAGE' && fill.imageHash) {
+          if (!seenHashes.has(fill.imageHash)) {
+            seenHashes.add(fill.imageHash);
+            results.push({ id: node.id, name: node.name, type: node.type, imageHash: fill.imageHash });
+          }
+          break; // only first image fill per node
+        }
+      }
+    }
+    if ('children' in node) {
+      for (const child of node.children) walk(child);
+    }
+  }
+
+  walk(root);
+  return results;
+}
+
+// ─── Export Node ──────────────────────────────────────────────────────────────
+
+async function exportNode(nodeId, format, scale) {
+  const node = figma.getNodeById(nodeId);
+  if (!node) throw new Error(`Node ${nodeId} not found`);
+
+  const settings = { format };
+  if (format === 'PNG' || format === 'JPG') {
+    settings.constraint = { type: 'SCALE', value: scale };
+  }
+
+  const bytes = await node.exportAsync(settings);
+
+  // Convert Uint8Array to base64
+  let binary = '';
+  const len = bytes.byteLength;
+  for (let i = 0; i < len; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  const base64 = btoa(binary);
+
+  return { nodeId, name: node.name, format, base64 };
 }
 
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -630,6 +701,7 @@ function getLocalStyles() {
 function serializeTextStyle(s) {
   return {
     id: s.id,
+    key: s.key,
     name: s.name,
     fontSize: s.fontSize,
     fontWeight: s.fontName ? s.fontName.style : null,
@@ -763,6 +835,34 @@ async function bulkApplyTextStyle(items) {
       results.push(await applyTextStyle(nodeId, styleId));
     } catch (e) {
       results.push({ ok: false, nodeId, error: e.message });
+    }
+  }
+  return results;
+}
+
+// Import library text styles by key in batches, then apply to text nodes.
+// items: [{ styleKey, nodeId }]
+async function bulkApplyTextStyleByKey(items) {
+  const BATCH = 15;
+  const results = [];
+  const keyToId = {};
+  for (let i = 0; i < items.length; i += BATCH) {
+    const batch = items.slice(i, i + BATCH);
+    await Promise.all(batch.map(async (item) => {
+      if (keyToId[item.styleKey] === undefined) {
+        try {
+          const s = await figma.importStyleByKeyAsync(item.styleKey);
+          keyToId[item.styleKey] = s.id;
+        } catch (e) {
+          keyToId[item.styleKey] = null;
+        }
+      }
+    }));
+    for (const item of batch) {
+      const styleId = keyToId[item.styleKey];
+      if (!styleId) { results.push({ ok: false, nodeId: item.nodeId, error: 'style import failed' }); continue; }
+      try { results.push(await applyTextStyle(item.nodeId, styleId)); }
+      catch (e) { results.push({ ok: false, nodeId: item.nodeId, error: e.message }); }
     }
   }
   return results;

@@ -70,6 +70,20 @@ The AI reads the file and writes the output — no API key management, no custom
 
 ---
 
+### Generating code from a Figma file
+
+You want to translate what's in Figma directly into code — not as a one-time export, but driven by the actual live values in the file. With Figlink, the AI can read the Figma variables and styles and write the output in whatever format your project expects:
+
+> *"Extract all COLOR variables from this file and generate a `src/styles/tokens.css` file using CSS custom properties."*
+
+> *"Read all text styles and output a `typography` section for `tailwind.config.ts` that maps each style name to its font size, weight, and line height."*
+
+> *"Get the spacing FLOAT variables and generate a `spacing` scale for Tailwind."*
+
+Because the AI is reading the live file rather than a static export, the output reflects the current state of the design system at the moment you run it.
+
+---
+
 ### Generating Figma content from data
 
 You have a spreadsheet or database of content — product names, prices, descriptions — and you need it reflected in Figma screens for a presentation or review.
@@ -99,13 +113,112 @@ This becomes a checkable artifact the same way a linting report is.
 
 ---
 
+### Localization and content updates at scale
+
+When you need to push translated copy into a Figma file across multiple screens — or keep a staging file in sync with content changes — updating text nodes one at a time is not viable.
+
+With Figlink, the AI can apply bulk text changes programmatically:
+> *"Here is a JSON map of node IDs to French translations. Update every text layer in the file to its translated value."*
+
+> *"Every text node in this file that contains the old product name should be updated to the new one."*
+
+---
+
 ## How it fits into a developer workflow
 
-Figlink runs locally. There's no cloud dependency, no API key for the Figma file, no separate service to manage. You start a local server, the designer runs a lightweight plugin in Figma Desktop, and any AI with terminal access can now issue commands to that file.
+Figlink runs locally. There's no cloud dependency, no API key for the Figma file, no separate service to manage. You start a local server, the plugin runs in Figma Desktop, and any AI with terminal access can issue commands to that file. Multiple files can be connected at the same time — the server routes commands to the right one by file key.
 
-For one-off tasks, you prompt the AI in natural language. For repeatable workflows, the AI can write a script in the `temp/` folder and run it — the same command structure, but automated.
+**For one-off tasks**, prompt the AI in natural language. It will call `tools/figma.js` directly.
 
-The plugin code itself is also editable. If you need a capability that doesn't exist, adding it is a matter of writing a new command handler in JavaScript. The server picks up the change without a restart.
+**For repeatable workflows**, the AI can write a script to `temp/` and execute it. The `temp/` folder is gitignored — it's the working area for task-specific files, intermediate data, and automation scripts. Clean it with `node tools/process.js clean` when done.
+
+**For plugin code changes**, edit `figma-plugin/code.js` directly. `start.js` watches the file and broadcasts a `code_changed` notification to all connected plugins instantly. You only need to close and re-run the plugin inside Figma — no server restart.
+
+---
+
+## Working with multiple files
+
+When more than one Figma file has the plugin running, commands need to know which file to target. Use the `--file` flag with either a file key or a full Figma URL:
+
+```bash
+node tools/figma.js --file <fileKey> get_page_frames
+node tools/figma.js --file "https://www.figma.com/design/abc123/..." get_local_variables
+```
+
+If only one file is connected and `--file` is omitted, that file is used automatically. To see all currently connected files:
+
+```bash
+node tools/figma.js list_connected_files
+```
+
+---
+
+## Writing automation scripts
+
+For tasks that go beyond a single command, write a script in `temp/` that calls `sendCommand` directly. The helper is exported from `tools/process.js`:
+
+```javascript
+// temp/my-script.js
+const { sendCommand } = require('../tools/process.js');
+
+async function run() {
+  const variables = await sendCommand('get_local_variables', {});
+  // ... transform, compare, decide what to update
+  await sendCommand('bulk_set_variable_binding', { bindings: [...] });
+}
+
+run().catch(console.error);
+```
+
+Run it with:
+```bash
+node temp/my-script.js
+```
+
+The default timeout in `sendCommand` is 180 seconds. For commands that scan large pages (such as `reset_instance_spacing` across hundreds of instances), pass a higher value explicitly:
+
+```javascript
+await sendCommand('reset_instance_spacing', { nodeId: '...' }, 300000);
+```
+
+---
+
+## Extending the plugin
+
+The plugin's command surface lives entirely in `figma-plugin/code.js`. To add a new capability, add a handler to the `handleCommand` switch block:
+
+```javascript
+case 'my_new_command': {
+  const { nodeId } = params;
+  const node = await figma.getNodeByIdAsync(nodeId);
+  // ... do something with the Figma Plugin API
+  return { success: true };
+}
+```
+
+Save the file. `start.js` detects the change and broadcasts a `code_changed` notification — close and re-run the plugin in Figma, and the new command is available immediately. No server restart needed.
+
+The handler receives `params` as a plain object and must return a JSON-serializable value. Throwing an error causes the caller to receive `{ error: message, errorType: name }`.
+
+---
+
+## Available commands
+
+A summary of what the plugin exposes. All commands are sent via `tools/figma.js` or `sendCommand`.
+
+| Category | Commands |
+|---|---|
+| **Query** | `ping`, `get_selection`, `get_nodes`, `get_nodes_flat`, `get_page_frames`, `get_pages`, `set_current_page`, `list_connected_files` |
+| **Styles** | `get_local_styles`, `get_all_available_styles`, `apply_text_style`, `bulk_apply_text_style`, `apply_fill_style`, `duplicate_text_style`, `bulk_duplicate_text_style`, `set_style_property`, `bulk_set_style_property`, `set_style_variable_binding`, `bulk_set_style_variable_binding`, `delete_style`, `bulk_delete_style` |
+| **Variables** | `get_local_variables`, `get_all_available_variables`, `get_all_document_variables`, `resolve_variables`, `set_variable_binding`, `bulk_set_variable_binding`, `remove_variable_binding`, `apply_fill_variable`, `bulk_apply_fill_variable` |
+| **Properties** | `set_property`, `bulk_set_property` — covers layout, typography, corner radius, opacity, blend mode, constraints, prototyping, and auto-layout fields |
+| **Text** | `set_characters`, `bulk_set_characters` |
+| **Rename** | `rename_node`, `bulk_rename` |
+| **Structure** | `create_node`, `create_node_tree`, `set_node_raw`, `delete_node`, `flatten_node`, `group_as_component_set` |
+| **Components** | `reset_instance_spacing`, `reset_instance_text_styles`, `swap_button_instances`, `clone_component_set`, `unclip_text_parent_frames` |
+| **Utilities** | `parse_link` — extracts `fileKey` and `nodeId` from any Figma URL, runs without a server |
+
+For full parameter details, see the handler implementations in `figma-plugin/code.js` and the architecture notes in `docs/TECHNICAL_ARCHITECTURE.md`.
 
 ---
 
