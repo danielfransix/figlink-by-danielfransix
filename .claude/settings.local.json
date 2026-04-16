@@ -1,7 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "Bash(node tools/figma.js --file \"figlink playground\" ping)"
-    ]
-  }
-}
