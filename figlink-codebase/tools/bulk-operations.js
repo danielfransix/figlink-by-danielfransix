@@ -255,6 +255,75 @@ const operations = {
     `;
     const res = await runFigmaCode(code, 300000);
     console.log('Result:', res);
+  },
+
+  /**
+   * Bind font sizes in text styles to corresponding FLOAT variables.
+   * Useful for: Connecting hardcoded text styles to typography variables.
+   * Usage: node bulk-operations.js bind_text_style_font_sizes
+   */
+  bind_text_style_font_sizes: async () => {
+    console.log('Binding text style font sizes to variables...');
+    const code = `
+      (async () => {
+        const textStyles = await figma.getLocalTextStylesAsync();
+        const variables = await figma.variables.getLocalVariablesAsync('FLOAT');
+        
+        let count = 0;
+        const missing = new Set();
+        const sizeToVar = {};
+        const errors = [];
+
+        // Map FLOAT variables by their value
+        for (const v of variables) {
+          const modes = Object.keys(v.valuesByMode);
+          if (modes.length === 0) continue;
+          
+          const val = v.valuesByMode[modes[0]];
+          if (typeof val === 'number') {
+            if (!sizeToVar[val]) {
+              sizeToVar[val] = v;
+            } else {
+              // Prefer variables with "size" or "font" in their name if there's a conflict
+              const existing = sizeToVar[val];
+              const vName = v.name.toLowerCase();
+              const existingName = existing.name.toLowerCase();
+              const isVSize = vName.includes('size') || vName.includes('font');
+              const isExistingSize = existingName.includes('size') || existingName.includes('font');
+              
+              if (isVSize && !isExistingSize) {
+                sizeToVar[val] = v;
+              }
+            }
+          }
+        }
+
+        for (const style of textStyles) {
+          const size = style.fontSize;
+          const v = sizeToVar[size];
+          if (v) {
+            try {
+              style.setBoundVariable('fontSize', figma.variables.createVariableAlias(v));
+              count++;
+            } catch(e) {
+              errors.push(e.message + " - size: " + size + " style: " + style.name);
+            }
+          } else {
+            missing.add(size);
+          }
+        }
+        
+        return { 
+          totalTextStyles: textStyles.length,
+          totalFloatVars: variables.length,
+          boundStylesCount: count,
+          unboundSizes: Array.from(missing),
+          errors: errors.slice(0, 5)
+        };
+      })()
+    `;
+    const res = await runFigmaCode(code, 300000);
+    console.log('Result:', res);
   }
 };
 
