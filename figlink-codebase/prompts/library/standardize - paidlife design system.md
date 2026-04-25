@@ -1,7 +1,7 @@
-# Figma Design System Processor — PaidLife Design System
+# Figma Design System Processor — ExampleApp Design System
 
 > **Sample prompt — not a generic template.**
-> This file contains standardization rules written specifically for the **PaidLife design system** (e.g. naming conventions, token structures, title-text logic). If you are using FigLink with a different design system, treat this as a reference example and write your own version tailored to your system's tokens, style names, and conventions. Only the workflow structure (the commands and step order) is reusable as-is; the rules themselves are opinionated to PaidLife.
+> This file contains standardization rules written specifically for the **ExampleApp design system** (e.g. naming conventions, token structures, title-text logic). If you are using FigLink with a different design system, treat this as a reference example and write your own version tailored to your system's tokens, style names, and conventions. Only the workflow structure (the commands and step order) is reusable as-is; the rules themselves are opinionated to ExampleApp.
 
 > **Workflow note:** This is an optional follow-on workflow. Before following any of the instructions in this document, explicitly ask the user whether they want to run the design system standardization process. Confirm with them first — this guide describes a specific opinionated process that may not match what they want.
 
@@ -87,12 +87,30 @@ Title text must **always** be resolved to a `text-title` style matched by closes
 
 **Spacing cadence:** After binding, step back and review the spacing rhythm like a designer. Spacing values should follow a coherent scale (e.g. 4 → 8 → 12 → 16 → 24 → 32). If you see erratic values like 7, 13, 19 px that didn't snap, flag them — they are almost always design mistakes, not intentional choices. Prefer snapping to the nearest step rather than leaving values unbound, and note any that needed judgment calls.
 
+### Clip Content
+- **Rule:** For every FRAME and COMPONENT node on the page, set `clipsContent` based on width:
+  - `width >= 440px` → `clipsContent = true` (full-screen / sheet frames need clipping)
+  - `width < 440px` → `clipsContent = false` (cards, rows, inner containers should not clip)
+- Apply unconditionally — do not skip based on current state.
+- **Exception**: skip nodes named with "illustration" or "vector".
+
+### Icon Stroke Weight Reset
+- After standardisation, find all INSTANCE nodes whose main component name matches `Weight=(Thin|Light|Regular|Bold|Duotone)` — these are Phosphor icon instances.
+- For each icon instance, find every descendant node with a non-empty `strokes` array and bind `strokeWeight` to the correct Example DS `border-width/*` variable based on the Weight variant:
+  - **Thin** → `border-width/1` (1px)
+  - **Light** → `border-width/1-24` (1.24px)
+  - **Regular** → `border-width/1-4` (1.4px)
+  - **Bold** → `border-width/1-8` (1.8px)
+  - **Duotone** → `border-width/1-4` (1.4px, same as Regular)
+  - **Fill** → skip (no stroke)
+- This resets any manual strokeWeight overrides so instances inherit the correct variable from the master component.
+
 ### Nesting Optimization
 - Standardize layouts to avoid unnecessary nesting. Use the `flatten` command (`node tools/process.js flatten <nodeId>`) to automatically remove wrapper frames/groups that only contain one child and have no visual properties of their own (no fills, strokes, padding, corner radius, effects, or opacity).
 
 ### Component Instances
-- **Never** modify component instances during standardization.
-- Only modify a component if it is the master component you are dealing with directly.
+- **Never** modify component instances during standardization — except for the icon stroke weight reset above, which specifically targets instance overrides.
+- Only modify a component's structure if it is the master component you are dealing with directly.
 
 ---
 

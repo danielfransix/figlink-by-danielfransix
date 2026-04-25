@@ -37,7 +37,7 @@ That's it. You don't need to know how to code.
 
 1. Open Figma Desktop
 2. Click the Figma logo (top left) → **Plugins** → **Development** → **Import plugin from manifest**
-3. A file browser opens — navigate to the folder your AI gave you the path for, then into the `figma-plugin` subfolder, and select the file called `manifest.json`
+3. A file browser opens — navigate into the `figlink-codebase` folder in this repository, then into the `figma-plugin` subfolder, and select the `manifest.json` file.
 4. Click **Open**
 5. Run the plugin (Figma logo → Plugins → Development → Figlink → Run)
 

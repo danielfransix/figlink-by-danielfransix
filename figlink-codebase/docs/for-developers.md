@@ -142,7 +142,7 @@ When more than one Figma file has the plugin running, commands need to know whic
 
 ```bash
 node tools/figma.js --file <fileKey> get_page_frames
-node tools/figma.js --file "https://www.figma.com/design/abc123/..." get_local_variables
+node tools/figma.js --file "https://www.figma.com/design/abc123456789/..." get_local_variables
 ```
 
 If only one file is connected and `--file` is omitted, that file is used automatically. To see all currently connected files:

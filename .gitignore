@@ -1,2 +1,11 @@
 proply-web-vanilla/
-.claude/settings.local.json
+.claude
+figlink-codebase/prompts/library/ux-copy-review-ta.md
+
+# Custom scripts & data dumps
+node_modules/
+figlink-codebase/*.json
+figlink-codebase/temp/*.json
+figlink-codebase/temp/*.txt
+figlink-codebase/uv*.exe
+figlink-codebase/tools/test.bat

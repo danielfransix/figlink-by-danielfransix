@@ -10,13 +10,14 @@
 
     body {
       font-family: 'Cal Sans', sans-serif;
-      font-size: 13px;
+      font-size: 16px;
       background: #141414;
       color: #c0c0c0;
       display: flex;
       flex-direction: column;
-      height: 100%;
-      overflow: hidden;
+      overflow-y: auto;
+      overflow-x: hidden;
+      min-height: 100vh; /* Ensure body takes full viewport height */
     }
 
     /* ── Status area ── */
@@ -26,21 +27,32 @@
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      gap: 6px;
-      padding: 18px 20px 12px;
+      gap: 9px;
+      padding: 26px 29px 17px;
+      min-height: 0; /* Allow flex item to shrink below content height */
+    }
+
+    .status-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 9px;
+      flex: 1; /* Allow status container to stretch and fill available space */
+      justify-content: center; /* Center content vertically */
     }
 
     .status {
       display: flex;
       align-items: center;
-      gap: 8px;
-      font-size: 14px;
+      gap: 12px;
+      font-size: 15px;
       color: #e0e0e0;
+      flex-shrink: 0; /* Prevent status from shrinking */
     }
 
     .dot {
-      width: 8px;
-      height: 8px;
+      width: 12px;
+      height: 12px;
       border-radius: 50%;
       background: #444;
       flex-shrink: 0;
@@ -56,9 +68,10 @@
     }
 
     .sub {
-      font-size: 12px;
+      font-size: 17px;
       color: #4a4a4a;
       letter-spacing: 0.01em;
+      flex-shrink: 0; /* Prevent sub text from shrinking */
     }
 
     /* ── OS-specific start instructions ── */
@@ -67,31 +80,32 @@
       flex-direction: column;
       gap: 0;
       width: 100%;
-      padding: 0 20px 6px;
+      padding: 0 29px 9px;
+      flex-shrink: 0; /* Prevent hint from shrinking */
     }
     .hint.visible { display: flex; }
 
     .hint-row {
       display: flex;
       align-items: baseline;
-      gap: 10px;
-      padding: 7px 0;
+      gap: 15px;
+      padding: 10px 0;
       border-top: 1px solid #1e1e1e;
     }
     .hint-row:first-child { border-top: none; }
 
     .hint-os {
-      font-size: 11px;
+      font-size: 12px;
       color: #3a3a3a;
       letter-spacing: 0.06em;
       text-transform: uppercase;
       flex-shrink: 0;
-      width: 64px;
+      width: 90px;
     }
     .hint-os.active { color: #888; }
 
     .hint-action {
-      font-size: 11px;
+      font-size: 14px;
       color: #383838;
       line-height: 1.4;
     }
@@ -99,10 +113,10 @@
 
     .hint-action code {
       font-family: 'Cal Sans', monospace;
-      font-size: 11px;
+      font-size: 12px;
       background: #1e1e1e;
       color: #888;
-      padding: 2px 6px;
+      padding: 2px 8px;
       border-radius: 3px;
       letter-spacing: 0.02em;
     }
@@ -113,42 +127,48 @@
     .banner {
       display: none;
       flex-direction: column;
-      gap: 8px;
-      margin: 0 12px 12px;
-      padding: 12px 14px;
+      gap: 12px;
+      margin: 0 17px 17px;
+      padding: 17px 20px;
       background: #1c1500;
       border: 1px solid #3a2c00;
-      border-radius: 6px;
+      border-radius: 9px;
+      flex-shrink: 0; /* Prevent banner from shrinking */
     }
     .banner.visible { display: flex; }
 
     .banner-title {
-      font-size: 11px;
+      font-size: 12px;
       color: #f59e0b;
       display: flex;
       align-items: center;
-      gap: 6px;
+      gap: 9px;
     }
     .banner-title::before {
       content: '⚠';
-      font-size: 11px;
+      font-size: 12px;
     }
 
     .banner-body {
-      font-size: 11px;
+      font-size: 12px;
       color: #8a7040;
       line-height: 1.5;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     .reload-btn {
       width: 100%;
-      padding: 8px 0;
+      padding: 12px 0;
       background: #f59e0b;
       color: #0d0900;
       border: none;
-      border-radius: 4px;
+      border-radius: 6px;
       font-family: 'Cal Sans', sans-serif;
-      font-size: 11px;
+      font-size: 12px;
       cursor: pointer;
       letter-spacing: 0.01em;
       transition: background 0.15s;
@@ -158,7 +178,7 @@
     .reload-btn:active { background: #d97706; }
 
     .shortcut {
-      font-size: 11px;
+      font-size: 12px;
       color: #4a3a10;
       text-align: center;
       letter-spacing: 0.01em;
@@ -167,23 +187,23 @@
     /* ── Footer ── */
     .footer {
       border-top: 1px solid #1f1f1f;
-      padding: 0 20px;
-      height: 40px;
+      padding: 0 29px;
+      height: 58px;
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 12px;
       flex-shrink: 0;
     }
 
     .footer-divider {
       color: #2a2a2a;
-      font-size: 11px;
-      margin: 0 2px;
+      font-size: 12px;
+      margin: 0 3px;
     }
 
     .footer-brand {
       font-family: 'Cal Sans', sans-serif;
-      font-size: 11px;
+      font-size: 12px;
       color: #ffffff;
       letter-spacing: 0.04em;
     }
@@ -192,21 +212,21 @@
     .author-row {
       display: flex;
       align-items: center;
-      gap: 8px;
-      padding: 7px 20px;
+      gap: 12px;
+      padding: 10px 29px;
       border-top: 1px solid #1e1e1e;
       flex-shrink: 0;
     }
 
     .author-divider {
       color: #2a2a2a;
-      font-size: 11px;
-      margin: 0 2px;
+      font-size: 12px;
+      margin: 0 3px;
     }
 
     .author-label {
       font-family: 'Cal Sans', sans-serif;
-      font-size: 11px;
+      font-size: 12px;
       color: #3a3a3a;
       letter-spacing: 0.06em;
       text-transform: uppercase;
@@ -214,20 +234,20 @@
 
     .author-name {
       font-family: 'Cal Sans', sans-serif;
-      font-size: 11px;
+      font-size: 12px;
       color: #c0c0c0;
       letter-spacing: 0.01em;
     }
 
     .footer-links {
       font-family: 'Cal Sans', sans-serif;
-      font-size: 11px;
+      font-size: 12px;
       color: rgba(255, 255, 255, 0.75);
       letter-spacing: 0.01em;
     }
 
     .footer-link {
-      font-size: 11px;
+      font-size: 12px;
       cursor: pointer;
       color: rgba(255, 255, 255, 0.75);
       transition: color 0.15s;
@@ -239,11 +259,13 @@
 
   <!-- Status -->
   <div class="main">
-    <div class="status">
-      <span class="dot connecting" id="dot"></span>
-      <span id="label">Connecting…</span>
+    <div class="status-container">
+      <div class="status">
+        <span class="dot connecting" id="dot"></span>
+        <span id="label">Connecting…</span>
+      </div>
+      <div class="sub" id="sub">Starting up…</div>
     </div>
-    <div class="sub" id="sub">Starting up…</div>
   </div>
 
   <!-- Start instructions (shown when not connected) -->
@@ -440,6 +462,13 @@
     document.getElementById('coffeeLink').addEventListener('click', () => {
       parent.postMessage({ pluginMessage: { type: 'open_url', url: 'https://danielfransix.short.gy/buy-coffee' } }, '*');
     });
+
+    // Auto-resize to hug contents
+    const resizeObserver = new ResizeObserver(() => {
+      const height = document.body.offsetHeight;
+      parent.postMessage({ pluginMessage: { type: 'resize', height: height } }, '*');
+    });
+    resizeObserver.observe(document.body);
 
     connect();
   </script>

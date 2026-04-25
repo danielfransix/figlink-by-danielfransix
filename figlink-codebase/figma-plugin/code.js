@@ -13,7 +13,7 @@ figma.ui.postMessage({
 figma.ui.onmessage = async (msg) => {
   // UI control messages (not Figma API commands)
   if (msg.type === 'resize') {
-    figma.ui.resize(240, msg.height);
+    figma.ui.resize(500, msg.height);
     return;
   }
   if (msg.type === 'close_plugin') {
