@@ -94,3 +94,4 @@ ws.on('error', (e) => { if (!done) { console.error(e.message); process.exit(1); 
 - **Plan before executing** — for non-trivial tasks, write a plan to `temp/` before creating or modifying nodes
 - **Exact values** — when sourcing data (CSS, a live file, an API), use the real values; never approximate
 - **Minimal footprint** — only change what was asked; do not apply style conventions or structural opinions beyond the user's request
+- **Centralize custom operations** — when building new tools or custom feature scripts for the user, ALWAYS integrate them as new foundational operations into the `tools/bulk-operations.js` file instead of creating new standalone scripts. Execute them from there.

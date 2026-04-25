@@ -36,7 +36,7 @@ function send(command, params, timeoutMs = 120000) {
 // ─── Core Runner ──────────────────────────────────────────────────────────────
 
 async function runFigmaCode(code, timeoutMs = 120000) {
-  return await send('evaluate', { code }, timeoutMs);
+  return await send('figma_execute', { code }, timeoutMs);
 }
 
 // ─── Foundational Operations ──────────────────────────────────────────────────
@@ -212,6 +212,45 @@ const operations = {
           }
         }
         return { modified: count };
+      })()
+    `;
+    const res = await runFigmaCode(code, 300000);
+    console.log('Result:', res);
+  },
+
+  /**
+   * Bulk exclude components from publishing by prefixing them with a dot.
+   * Useful for: Hiding icon sets or private components.
+   * Usage: node bulk-operations.js exclude_components <nodeId>
+   */
+  exclude_components: async (nodeId) => {
+    console.log(`Excluding components inside node '${nodeId}'...`);
+    const code = `
+      (async () => {
+        const targetNode = await figma.getNodeByIdAsync(${JSON.stringify(nodeId)});
+        if (!targetNode) throw new Error("Node not found.");
+        
+        let count = 0;
+        
+        const processNode = (n) => {
+          if (!n.name.startsWith(".") && !n.name.startsWith("_")) {
+            n.name = "." + n.name;
+            count++;
+          }
+        };
+
+        if (targetNode.type === "COMPONENT" || targetNode.type === "COMPONENT_SET") {
+          processNode(targetNode);
+        }
+        
+        if (targetNode.findAll) {
+          const components = targetNode.findAll(n => n.type === "COMPONENT" || n.type === "COMPONENT_SET");
+          for (const comp of components) {
+            processNode(comp);
+          }
+        }
+        
+        return { excluded: count };
       })()
     `;
     const res = await runFigmaCode(code, 300000);
