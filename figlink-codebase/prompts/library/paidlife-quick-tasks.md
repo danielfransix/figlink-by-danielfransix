@@ -50,15 +50,14 @@ Tasks executed against the ExampleApp Figma file via Figlink.
 **Task 10 — Reset text style overrides on component instances (all pages)**
 > Text styles on several component instances had been manually modified. Go page by page through the exampleapp file, check the masters in Example DS, and reset the overrides so instances automatically inherit the correct text style from their master — without blowing away other intentional overrides (component props, fills, visibility). Do it surgically and space out the edits with timeouts.
 >
-> Example DS ref: https://www.figma.com/design/abc123456789/paidHR---mina-DS?node-id=4992-4363
-> exampleapp ref: https://www.figma.com/design/abc123456789/exampleapp?node-id=545-649
->
 > Result: 1,666 text nodes reset across 15 pages via `reset_instance_text_styles` (path-traversal, textStyleId sync).
 
 ---
 
 **Task 3 — UX copy + frame renames across all flows**
 > Act as a senior UX writer. Write copy for every text element in the designs. Read the Notion source of truth first (ExampleApp flow doc + all subpages), then work through the Figma files starting with the component pages. Write copy screen by screen, mapping every text layer to its purpose. Rename frames appropriately as you go. Flag any UX gaps vs the flow doc.
->
-> Notion: exampleapp — mvp flow doc (page ID `32c964279f8d819eb14cf59d004397ed`)
-> Figma: https://www.figma.com/design/abc123456789/exampleapp
+
+---
+
+**Task 11 — Align Figma modal copy with Notion specifications**
+> Read the provided Notion document containing the notification copy templates (titles and bodies). Then, go through all the modals in the specified Figma file/node and ensure the text in the Figma modals perfectly matches the copy defined in the Notion document. Use Figlink to programmatically update any text nodes in Figma that are out of sync.
