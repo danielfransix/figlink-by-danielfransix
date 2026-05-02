@@ -14,7 +14,7 @@ if %errorlevel% neq 0 (
     echo   ^|   Figlink requires Node.js to run.                       ^|
     echo   ^|                                                          ^|
     echo   ^|   Download it free from:                                 ^|
-    echo   ^|     https://nodejs.org/en/download                       ^|
+    echo   ^|   https://nodejs.org/en/download                         ^|
     echo   ^|                                                          ^|
     echo   ^|   Install Node.js, then double-click this file again.    ^|
     echo   ^|                                                          ^|
