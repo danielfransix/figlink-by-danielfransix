@@ -211,6 +211,36 @@ async function handleCommand(command, params) {
     case 'export_node':
       return await exportNode(params.nodeId, params.format || 'PNG', params.scale || 2);
 
+    case 'screenshot_selection':
+      return await handleScreenshotSelection(params);
+
+    case 'screenshot_node':
+      return await handleScreenshotNode(params);
+
+    case 'screenshot_page_overview':
+      return await handleScreenshotPageOverview(params);
+
+    case 'find_and_screenshot':
+      return await handleFindAndScreenshot(params);
+
+    case 'screenshot_frame_thumbnails':
+      return await handleScreenshotFrameThumbnails(params);
+
+    case 'screenshot_node_with_context':
+      return await handleScreenshotNodeWithContext(params);
+
+    case 'get_viewport_info':
+      return handleGetViewportInfo();
+
+    case 'find_visible_nodes':
+      return handleFindVisibleNodes();
+
+    case 'screenshot_viewport_region':
+      return await handleScreenshotViewportRegion(params);
+
+    case 'scroll_to_node':
+      return handleScrollToNode(params);
+
     case 'figma_execute': {
       // Execute arbitrary JS in the plugin context. params.code is a full JS expression or IIFE.
       // eslint-disable-next-line no-eval
@@ -460,28 +490,467 @@ function findImageNodes(nodeId) {
   return results;
 }
 
+// ─── Base64 Utility ──────────────────────────────────────────────────────────
+
+function uint8ToBase64(bytes) {
+  const CHUNK = 0x8000;
+  let result = '';
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    result += String.fromCharCode.apply(null, bytes.subarray(i, i + CHUNK));
+  }
+  return btoa(result);
+}
+
+function deduplicateNodes(nodes) {
+  const nodeIdSet = new Set(nodes.map(n => n.id));
+  return nodes.filter(node => {
+    let current = node.parent;
+    while (current) {
+      if (nodeIdSet.has(current.id)) return false;
+      current = current.parent;
+    }
+    return true;
+  });
+}
+
 // ─── Export Node ──────────────────────────────────────────────────────────────
 
-async function exportNode(nodeId, format, scale) {
-  const node = figma.getNodeById(nodeId);
-  if (!node) throw new Error(`Node ${nodeId} not found`);
+async function exportNodeAsImage(node, options) {
+  const format = (options && options.format) || 'PNG';
+  let scale = (options && options.scale) || 2;
+
+  if ('width' in node && 'height' in node) {
+    const maxDim = Math.max(node.width, node.height);
+    const maxPixelDim = 4000;
+    if (maxDim * scale > maxPixelDim) {
+      scale = Math.max(0.25, maxPixelDim / maxDim);
+    }
+  }
 
   const settings = { format };
   if (format === 'PNG' || format === 'JPG') {
     settings.constraint = { type: 'SCALE', value: scale };
   }
-
   const bytes = await node.exportAsync(settings);
+  const base64 = uint8ToBase64(bytes);
+  return {
+    __figlink_result_type: 'image',
+    data: base64,
+    mimeType: format === 'JPG' ? 'image/jpeg' : 'image/png',
+    metadata: {
+      nodeId: node.id,
+      name: node.name,
+      type: node.type,
+      format,
+      scale,
+      width: Math.round(node.width * scale),
+      height: Math.round(node.height * scale),
+    },
+    export_result: { nodeId: node.id, name: node.name, format, base64 },
+  };
+}
 
-  // Convert Uint8Array to base64
-  let binary = '';
-  const len = bytes.byteLength;
-  for (let i = 0; i < len; i++) {
-    binary += String.fromCharCode(bytes[i]);
+async function exportNode(nodeId, format, scale) {
+  const node = figma.getNodeById(nodeId);
+  if (!node) throw new Error(`Node ${nodeId} not found`);
+  const imageResult = await exportNodeAsImage(node, { format, scale });
+  return imageResult.export_result;
+}
+
+// ─── Screenshot Commands ─────────────────────────────────────────────────────
+
+async function handleScreenshotSelection(params) {
+  const selection = figma.currentPage.selection;
+  if (!selection || selection.length === 0) {
+    throw new Error('Nothing selected. Select one or more nodes in Figma first.');
   }
-  const base64 = btoa(binary);
 
-  return { nodeId, name: node.name, format, base64 };
+  const format = params.format || 'PNG';
+  const scale = params.scale || 2;
+  const page = params.page || 1;
+  const pageSize = params.pageSize || 15;
+
+  if (selection.length === 1) {
+    return await exportNodeAsImage(selection[0], { format, scale });
+  }
+
+  const nodes = Array.from(selection);
+  const deduped = deduplicateNodes(nodes);
+  const totalCount = deduped.length;
+  const startIndex = (page - 1) * pageSize;
+  const pageItems = deduped.slice(startIndex, startIndex + pageSize);
+  const hasMore = startIndex + pageSize < totalCount;
+
+  const summaryLines = [`Showing page ${page} (items ${startIndex + 1}-${Math.min(startIndex + pageSize, totalCount)} of ${totalCount} total after dedup).`];
+  if (hasMore) {
+    summaryLines.push(`Call again with page=${page + 1} for more.`);
+  }
+  const spatials = pageItems.map(n => `${n.name} (${Math.round(n.x)},${Math.round(n.y)})`);
+  summaryLines.push(`Nodes: ${spatials.join(' | ')}`);
+
+  const items = [{ type: 'text', content: summaryLines.join(' ') }];
+
+  const CONCURRENCY = 5;
+  for (let i = 0; i < pageItems.length; i += CONCURRENCY) {
+    const batch = pageItems.slice(i, i + CONCURRENCY);
+    const results = await Promise.all(batch.map(async (node) => {
+      try {
+        const result = await exportNodeAsImage(node, { format, scale });
+        return { type: 'image', data: result.data, mimeType: result.mimeType };
+      } catch (e) {
+        return { type: 'text', content: `Failed to export ${node.name} (${node.id}): ${e.message}` };
+      }
+    }));
+    items.push(...results);
+  }
+
+  return {
+    __figlink_result_type: 'mixed',
+    items,
+    pagination: { page, pageSize, totalCount, hasMore },
+  };
+}
+
+async function handleScreenshotNode(params) {
+  const node = figma.getNodeById(params.nodeId);
+  if (!node) throw new Error(`Node ${params.nodeId} not found`);
+  const format = params.format || 'PNG';
+  const scale = params.scale || 2;
+  return await exportNodeAsImage(node, { format, scale });
+}
+
+async function handleScreenshotPageOverview(params) {
+  const format = params.format || 'JPG';
+  const scale = params.scale || 1;
+
+  try {
+    const settings = { format };
+    if (format === 'PNG' || format === 'JPG') {
+      settings.constraint = { type: 'SCALE', value: scale };
+    }
+    const bytes = await figma.currentPage.exportAsync(settings);
+    const base64 = uint8ToBase64(bytes);
+    return {
+      __figlink_result_type: 'image',
+      data: base64,
+      mimeType: format === 'JPG' ? 'image/jpeg' : 'image/png',
+      metadata: {
+        nodeId: figma.currentPage.id,
+        name: 'Page Overview: ' + figma.currentPage.name,
+        type: 'PAGE',
+        format,
+        scale,
+      },
+    };
+  } catch (e) {
+    const frames = figma.currentPage.children.filter(
+      c => c.type === 'FRAME' || c.type === 'COMPONENT' || c.type === 'COMPONENT_SET'
+    );
+    if (frames.length === 0) {
+      throw new Error('Page overview export failed and page has no exportable frames as fallback. Original error: ' + e.message);
+    }
+
+    const items = [{ type: 'text', content: `Page overview export failed (${e.message}). Showing ${frames.length} top-level frames as fallback.` }];
+
+    const CONCURRENCY = 5;
+    for (let i = 0; i < frames.length; i += CONCURRENCY) {
+      const batch = frames.slice(i, i + CONCURRENCY);
+      const results = await Promise.all(batch.map(async (node) => {
+        try {
+          const result = await exportNodeAsImage(node, { format, scale });
+          return { type: 'image', data: result.data, mimeType: result.mimeType };
+        } catch (e2) {
+          return { type: 'text', content: `Failed to export ${node.name} (${node.id}): ${e2.message}` };
+        }
+      }));
+      items.push(...results);
+    }
+
+    return {
+      __figlink_result_type: 'mixed',
+      items,
+    };
+  }
+}
+
+async function handleFindAndScreenshot(params) {
+  const root = params.rootNodeId ? figma.getNodeById(params.rootNodeId) : figma.currentPage;
+  if (!root) throw new Error(`Node ${params.rootNodeId} not found`);
+
+  const query = (params.query || '').toLowerCase();
+  const targetType = params.type ? params.type.toUpperCase() : null;
+  const scale = params.scale || 1;
+  const page = params.page || 1;
+  const pageSize = params.pageSize || 10;
+
+  const matches = [];
+  const stack = [{ node: root, depth: 0 }];
+  let count = 0;
+
+  while (stack.length > 0) {
+    const { node, depth } = stack.pop();
+    if (!node || depth > 100) continue;
+
+    count++;
+    if (count % 1000 === 0) {
+      await new Promise(r => setTimeout(r, 5));
+    }
+
+    const nameMatch = !query || node.name.toLowerCase().includes(query);
+    let textMatch = false;
+    if (!nameMatch && query && node.type === 'TEXT' && node.characters) {
+      textMatch = node.characters.toLowerCase().includes(query);
+    }
+    const typeMatch = !targetType || node.type === targetType;
+
+    if ((nameMatch || textMatch) && typeMatch) {
+      matches.push(node);
+    }
+
+    if ('children' in node) {
+      for (let i = node.children.length - 1; i >= 0; i--) {
+        stack.push({ node: node.children[i], depth: depth + 1 });
+      }
+    }
+  }
+
+  if (matches.length === 0) {
+    const reason = `No nodes found matching query "${params.query}"${targetType ? ' with type ' + targetType : ''}.`;
+    return { __figlink_result_type: 'mixed', items: [{ type: 'text', content: reason }] };
+  }
+
+  const deduped = deduplicateNodes(matches);
+  const totalCount = deduped.length;
+  const startIndex = (page - 1) * pageSize;
+  const pageItems = deduped.slice(startIndex, startIndex + pageSize);
+  const hasMore = startIndex + pageSize < totalCount;
+
+  const summaryLines = [`Found ${matches.length} matches for "${params.query}" (${totalCount} after dedup). Showing page ${page} of ${Math.ceil(totalCount / pageSize)}.`];
+  if (hasMore) summaryLines.push(`Call again with page=${page + 1} for more.`);
+
+  const items = [{ type: 'text', content: summaryLines.join(' ') }];
+
+  const CONCURRENCY = 5;
+  for (let i = 0; i < pageItems.length; i += CONCURRENCY) {
+    const batch = pageItems.slice(i, i + CONCURRENCY);
+    const results = await Promise.all(batch.map(async (node) => {
+      try {
+        const result = await exportNodeAsImage(node, { format: 'PNG', scale });
+        return { type: 'image', data: result.data, mimeType: result.mimeType };
+      } catch (e) {
+        return { type: 'text', content: `Failed to export ${node.name} (${node.id}): ${e.message}` };
+      }
+    }));
+    items.push(...results);
+  }
+
+  return {
+    __figlink_result_type: 'mixed',
+    items,
+    pagination: { page, pageSize, totalCount, hasMore },
+  };
+}
+
+async function handleScreenshotFrameThumbnails(params) {
+  const scale = params.scale || 0.5;
+  const page = params.page || 1;
+  const pageSize = params.pageSize || 20;
+
+  const frames = figma.currentPage.children.filter(
+    c => c.type === 'FRAME' || c.type === 'COMPONENT' || c.type === 'COMPONENT_SET'
+  );
+
+  if (frames.length === 0) {
+    return { __figlink_result_type: 'mixed', items: [{ type: 'text', content: 'No frames found on the current page.' }] };
+  }
+
+  const totalCount = frames.length;
+  const startIndex = (page - 1) * pageSize;
+  const pageItems = frames.slice(startIndex, startIndex + pageSize);
+  const hasMore = startIndex + pageSize < totalCount;
+
+  const summaryLines = [`Page "${figma.currentPage.name}" has ${totalCount} top-level frames. Showing page ${page} (${startIndex + 1}-${Math.min(startIndex + pageSize, totalCount)}).`];
+  if (hasMore) summaryLines.push(`Call again with page=${page + 1} for more.`);
+
+  const items = [{ type: 'text', content: summaryLines.join(' ') }];
+
+  const CONCURRENCY = 5;
+  for (let i = 0; i < pageItems.length; i += CONCURRENCY) {
+    const batch = pageItems.slice(i, i + CONCURRENCY);
+    const results = await Promise.all(batch.map(async (node) => {
+      try {
+        const result = await exportNodeAsImage(node, { format: 'PNG', scale });
+        return { type: 'image', data: result.data, mimeType: result.mimeType };
+      } catch (e) {
+        return { type: 'text', content: `Failed to export ${node.name} (${node.id}): ${e.message}` };
+      }
+    }));
+    items.push(...results);
+  }
+
+  return {
+    __figlink_result_type: 'mixed',
+    items,
+    pagination: { page, pageSize, totalCount, hasMore },
+  };
+}
+
+async function handleScreenshotNodeWithContext(params) {
+  const node = figma.getNodeById(params.nodeId);
+  if (!node) throw new Error(`Node ${params.nodeId} not found`);
+
+  const format = params.format || 'PNG';
+  const scale = params.scale || 2;
+
+  let contextNode = null;
+  let current = node.parent;
+  while (current && current.type !== 'PAGE') {
+    if (current.type === 'FRAME' || current.type === 'COMPONENT' || current.type === 'COMPONENT_SET') {
+      contextNode = current;
+      break;
+    }
+    current = current.parent;
+  }
+
+  let needsContext = true;
+  let needsDetail = true;
+
+  if (node.type === 'FRAME' || node.type === 'COMPONENT' || node.type === 'COMPONENT_SET') {
+    if (!contextNode) {
+      needsContext = false;
+    }
+  }
+
+  if (contextNode && contextNode.id === node.id) {
+    needsContext = false;
+  }
+
+  const items = [];
+
+  const contextLabel = contextNode ? contextNode.name : 'none (top-level)';
+
+  if (needsDetail) {
+    try {
+      const detail = await exportNodeAsImage(node, { format, scale });
+      items.push({ type: 'text', content: `Detail: ${node.name} (${node.type})` });
+      items.push({ type: 'image', data: detail.data, mimeType: detail.mimeType });
+    } catch (e) {
+      items.push({ type: 'text', content: `Failed to export detail ${node.name}: ${e.message}` });
+    }
+  }
+
+  if (needsContext && contextNode) {
+    try {
+      const ctxScale = Math.min(scale, 1);
+      const ctx = await exportNodeAsImage(contextNode, { format, scale: ctxScale });
+      items.push({ type: 'text', content: `Context: ${contextLabel} (${contextNode.type})` });
+      items.push({ type: 'image', data: ctx.data, mimeType: ctx.mimeType });
+    } catch (e) {
+      items.push({ type: 'text', content: `Failed to export context ${contextLabel}: ${e.message}` });
+    }
+  } else if (!needsContext) {
+    items.unshift({ type: 'text', content: `Detail: ${node.name} (${node.type}) — this node is top-level, no separate context frame needed.` });
+  }
+
+  return {
+    __figlink_result_type: 'mixed',
+    items,
+  };
+}
+
+function handleGetViewportInfo() {
+  return {
+    center: figma.viewport.center,
+    zoom: figma.viewport.zoom,
+    bounds: figma.viewport.bounds,
+  };
+}
+
+function handleFindVisibleNodes() {
+  const vp = figma.viewport.bounds;
+  const visible = [];
+  for (const child of figma.currentPage.children) {
+    if (!('x' in child && 'y' in child && 'width' in child && 'height' in child)) continue;
+    const overlapX = child.x < vp.x + vp.width && child.x + child.width > vp.x;
+    const overlapY = child.y < vp.y + vp.height && child.y + child.height > vp.y;
+    if (overlapX && overlapY) {
+      visible.push({
+        id: child.id,
+        name: child.name,
+        type: child.type,
+        x: child.x,
+        y: child.y,
+        width: child.width,
+        height: child.height,
+      });
+    }
+  }
+  return visible;
+}
+
+async function handleScreenshotViewportRegion(params) {
+  const vp = figma.viewport.bounds;
+  const scale = params.scale || 1;
+
+  const visibleFrames = [];
+  for (const child of figma.currentPage.children) {
+    if (!('x' in child && 'y' in child && 'width' in child && 'height' in child)) continue;
+    if (child.type !== 'FRAME' && child.type !== 'COMPONENT' && child.type !== 'COMPONENT_SET') continue;
+    const overlapX = child.x < vp.x + vp.width && child.x + child.width > vp.x;
+    const overlapY = child.y < vp.y + vp.height && child.y + child.height > vp.y;
+    if (overlapX && overlapY) {
+      visibleFrames.push(child);
+    }
+  }
+
+  if (visibleFrames.length === 0) {
+    throw new Error('No frames visible in the current viewport.');
+  }
+
+  const deduped = deduplicateNodes(visibleFrames);
+
+  if (deduped.length === 1) {
+    const viewportCoverageX = Math.min(1, vp.width / deduped[0].width);
+    const viewportCoverageY = Math.min(1, vp.height / deduped[0].height);
+    const isDominant = viewportCoverageX > 0.8 || viewportCoverageY > 0.8;
+
+    const result = await exportNodeAsImage(deduped[0], { format: 'PNG', scale });
+    if (isDominant) return result;
+
+    const items = [
+      { type: 'text', content: `Viewport region (1 frame visible): ${deduped[0].name}` },
+      { type: 'image', data: result.data, mimeType: result.mimeType },
+    ];
+    return { __figlink_result_type: 'mixed', items };
+  }
+
+  const items = [{ type: 'text', content: `${deduped.length} frames visible in viewport.` }];
+
+  const CONCURRENCY = 5;
+  for (let i = 0; i < deduped.length; i += CONCURRENCY) {
+    const batch = deduped.slice(i, i + CONCURRENCY);
+    const results = await Promise.all(batch.map(async (node) => {
+      try {
+        const result = await exportNodeAsImage(node, { format: 'PNG', scale });
+        return { type: 'image', data: result.data, mimeType: result.mimeType };
+      } catch (e) {
+        return { type: 'text', content: `Failed to export ${node.name}: ${e.message}` };
+      }
+    }));
+    items.push(...results);
+  }
+
+  return {
+    __figlink_result_type: 'mixed',
+    items,
+  };
+}
+
+function handleScrollToNode(params) {
+  const node = figma.getNodeById(params.nodeId);
+  if (!node) throw new Error(`Node ${params.nodeId} not found`);
+  figma.viewport.scrollAndZoomIntoView([node]);
+  return { ok: true, nodeId: node.id, name: node.name };
 }
 
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -559,6 +1028,10 @@ function serializeNode(node, depth) {
     type: node.type,
   };
 
+  if ('x' in node) base.x = node.x;
+  if ('y' in node) base.y = node.y;
+  if ('width' in node) base.width = node.width;
+  if ('height' in node) base.height = node.height;
   if ('rotation' in node && node.rotation !== 0) base.rotation = node.rotation;
   if ('opacity' in node && node.opacity !== 1) base.opacity = node.opacity;
   if ('effects' in node && node.effects.length > 0) {

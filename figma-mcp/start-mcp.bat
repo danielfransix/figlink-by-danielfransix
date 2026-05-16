@@ -41,30 +41,25 @@ if not exist "node_modules" (
     echo.
 )
 
-:: -- 3. Start MCP server -----------------------------------------
+:: -- 3. Start ngrok tunnel ---------------------------------------
+where ngrok >nul 2>&1
+if %errorlevel% equ 0 (
+    echo   Starting ngrok tunnel on port 39399...
+    start "ngrok Figlink" cmd /c "ngrok http 39399"
+) else (
+    echo   ngrok not found in PATH -- skipping tunnel.
+    echo   Install from https://ngrok.com then run: ngrok http 39399
+)
+
+:: -- 4. Start MCP server -----------------------------------------
 echo.
-echo   Starting MCP server on http://localhost:3000
+echo   Starting MCP server on http://localhost:39399
 echo.
 echo   ------------------------------------------------------------
 echo.
-echo   NEXT: Expose to the web with ngrok.
-echo.
-echo   If you don't have ngrok installed:
-echo     1. Create a free account at https://ngrok.com
-echo     2. Download and install ngrok
-echo     3. Run: ngrok config add-authtoken ^<your-token^>
-echo.
-echo   Then in a new terminal, run:
-echo     ngrok http 3000
-echo.
-echo   Copy the "Forwarding" URL (e.g. https://xxxx.ngrok-free.app)
-echo   and paste it into your web AI's MCP endpoint field.
-echo.
-echo   No bearer token is needed -- the MCP protocol doesn't
-echo   require one. If Notion AI requires a field, leave it empty.
-echo   If you want to add protection, use ngrok's built-in auth:
-echo     ngrok http 3000 --basic-auth "user:pass"
-echo   then provide those credentials to the AI platform.
+echo   Copy the ngrok "Forwarding" URL (e.g. https://xxxx.ngrok-free.app)
+echo   from the ngrok terminal and paste it into your web AI's
+echo   MCP endpoint field.
 echo.
 echo   ------------------------------------------------------------
 echo.

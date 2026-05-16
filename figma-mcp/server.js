@@ -5,7 +5,7 @@ const http = require('http');
 const { z } = require('zod');
 const { bridge } = require('./bridge.js');
 
-const PORT = parseInt(process.env.PORT || '3000', 10);
+const PORT = parseInt(process.env.PORT || '39399', 10);
 
 const transports = {};
 
@@ -22,6 +22,31 @@ async function run(command, params, extra) {
 
 function jsonContent(result) {
   return { content: [{ type: 'text', text: typeof result === 'string' ? result : JSON.stringify(result, null, 2) }] };
+}
+
+function imageContent(result) {
+  return {
+    content: [
+      { type: 'image', data: result.data, mimeType: result.mimeType },
+      { type: 'text', text: JSON.stringify(result.metadata, null, 2) },
+    ],
+  };
+}
+
+function mixedContent(result) {
+  const items = result.items.map((item) => {
+    if (item.type === 'image') {
+      return { type: 'image', data: item.data, mimeType: item.mimeType };
+    }
+    return { type: 'text', text: typeof item.content === 'string' ? item.content : JSON.stringify(item.content, null, 2) };
+  });
+  return { content: items };
+}
+
+function formatResult(result) {
+  if (result && result.__figlink_result_type === 'image') return imageContent(result);
+  if (result && result.__figlink_result_type === 'mixed') return mixedContent(result);
+  return jsonContent(result);
 }
 
 function createMcpServer() {
@@ -130,44 +155,22 @@ server.tool(
 
 server.tool(
   'figma_rename_node',
-  'Rename a single node.',
+  'Rename one or more nodes. Pass an items array with { nodeId, name } objects.',
   {
-    nodeId: z.string().describe('ID of the node to rename'),
-    name: z.string().describe('New name for the node'),
-    fileKey: z.string().optional().describe('Target a specific Figma file by its key'),
-  },
-  async (params) => jsonContent(await run('rename_node', params))
-);
-
-server.tool(
-  'figma_bulk_rename',
-  'Rename multiple nodes at once.',
-  {
-    renames: z.array(z.object({
+    items: z.array(z.object({
       nodeId: z.string(),
       name: z.string(),
     })).describe('Array of { nodeId, name } objects'),
     fileKey: z.string().optional().describe('Target a specific Figma file by its key'),
   },
-  async (params) => jsonContent(await run('bulk_rename', params))
+  async (params) => jsonContent(await run('bulk_rename', { renames: params.items, fileKey: params.fileKey }))
 );
 
 // ─── Text Content ────────────────────────────────────────────────────────────
 
 server.tool(
   'figma_set_characters',
-  'Set the text content of a text node.',
-  {
-    nodeId: z.string().describe('ID of the TEXT node'),
-    text: z.string().describe('New text content'),
-    fileKey: z.string().optional().describe('Target a specific Figma file by its key'),
-  },
-  async (params) => jsonContent(await run('set_characters', params))
-);
-
-server.tool(
-  'figma_bulk_set_characters',
-  'Set text content on multiple text nodes at once.',
+  'Set text content on one or more text nodes. Pass an items array with { nodeId, text } objects.',
   {
     items: z.array(z.object({
       nodeId: z.string(),
@@ -175,46 +178,36 @@ server.tool(
     })).describe('Array of { nodeId, text } objects'),
     fileKey: z.string().optional().describe('Target a specific Figma file by its key'),
   },
-  async (params) => jsonContent(await run('bulk_set_characters', params))
+  async (params) => jsonContent(await run('bulk_set_characters', { items: params.items, fileKey: params.fileKey }))
 );
 
 // ─── Text Styles ─────────────────────────────────────────────────────────────
 
 server.tool(
   'figma_apply_text_style',
-  'Apply a text style to a text node.',
-  {
-    nodeId: z.string().describe('ID of the TEXT node'),
-    styleId: z.string().describe('ID of the text style to apply'),
-    fileKey: z.string().optional().describe('Target a specific Figma file by its key'),
-  },
-  async (params) => jsonContent(await run('apply_text_style', params))
-);
-
-server.tool(
-  'figma_bulk_apply_text_style',
-  'Apply text styles to multiple nodes at once.',
+  'Apply text styles to one or more nodes. Each item can use styleId (local) or styleKey (team library). Use styleKey for library styles that need importing.',
   {
     items: z.array(z.object({
       nodeId: z.string(),
-      styleId: z.string(),
-    })).describe('Array of { nodeId, styleId } objects'),
+      styleId: z.string().optional().describe('Local text style ID'),
+      styleKey: z.string().optional().describe('Library style key (team library) — use this instead of styleId for imported styles'),
+    })).describe('Array of { nodeId, styleId?, styleKey? } objects'),
     fileKey: z.string().optional().describe('Target a specific Figma file by its key'),
   },
-  async (params) => jsonContent(await run('bulk_apply_text_style', params))
-);
-
-server.tool(
-  'figma_bulk_apply_text_style_by_key',
-  'Import library text styles by key and apply them to nodes.',
-  {
-    items: z.array(z.object({
-      nodeId: z.string(),
-      styleKey: z.string().describe('Library style key (from team library)'),
-    })).describe('Array of { nodeId, styleKey } objects'),
-    fileKey: z.string().optional().describe('Target a specific Figma file by its key'),
-  },
-  async (params) => jsonContent(await run('bulk_apply_text_style_by_key', params))
+  async (params) => {
+    const local = params.items.filter(i => i.styleKey === undefined || i.styleKey === null);
+    const byKey = params.items.filter(i => i.styleKey !== undefined && i.styleKey !== null);
+    const results = [];
+    if (local.length > 0) {
+      const r = await run('bulk_apply_text_style', { items: local, fileKey: params.fileKey });
+      if (Array.isArray(r)) results.push(...r);
+    }
+    if (byKey.length > 0) {
+      const r = await run('bulk_apply_text_style_by_key', { items: byKey, fileKey: params.fileKey });
+      if (Array.isArray(r)) results.push(...r);
+    }
+    return jsonContent(results);
+  }
 );
 
 // ─── Colors & Fills ──────────────────────────────────────────────────────────
@@ -233,84 +226,60 @@ server.tool(
 
 server.tool(
   'figma_apply_fill_variable',
-  'Bind a variable to a node\'s fill color.',
-  {
-    nodeId: z.string().describe('ID of the node'),
-    variableId: z.string().describe('ID of the color variable'),
-    fillIndex: z.number().optional().default(0).describe('Which fill slot (default: 0)'),
-    fileKey: z.string().optional().describe('Target a specific Figma file by its key'),
-  },
-  async (params) => jsonContent(await run('apply_fill_variable', params))
-);
-
-server.tool(
-  'figma_bulk_apply_fill_variable',
-  'Bind variables to fill colors on multiple nodes.',
+  'Bind variables to fill colors on one or more nodes. Each item can use variableId (local) or variableKey (team library).',
   {
     items: z.array(z.object({
       nodeId: z.string(),
-      variableId: z.string(),
-      fillIndex: z.number().optional().default(0),
-    })).describe('Array of { nodeId, variableId, fillIndex? } objects'),
+      variableId: z.string().optional().describe('Local variable ID'),
+      variableKey: z.string().optional().describe('Library variable key — use this instead of variableId for imported variables'),
+      fillIndex: z.number().optional().default(0).describe('Which fill slot (default: 0)'),
+    })).describe('Array of { nodeId, variableId?, variableKey?, fillIndex? } objects'),
     fileKey: z.string().optional().describe('Target a specific Figma file by its key'),
   },
-  async (params) => jsonContent(await run('bulk_apply_fill_variable', params))
-);
-
-server.tool(
-  'figma_bulk_apply_fill_variable_by_key',
-  'Import library variables by key and bind them to fill colors.',
-  {
-    items: z.array(z.object({
-      nodeId: z.string(),
-      variableKey: z.string().describe('Library variable key'),
-      fillIndex: z.number().optional().default(0),
-    })).describe('Array of { nodeId, variableKey, fillIndex? } objects'),
-    fileKey: z.string().optional().describe('Target a specific Figma file by its key'),
-  },
-  async (params) => jsonContent(await run('bulk_apply_fill_variable_by_key', params))
+  async (params) => {
+    const local = params.items.filter(i => i.variableKey === undefined || i.variableKey === null);
+    const byKey = params.items.filter(i => i.variableKey !== undefined && i.variableKey !== null);
+    const results = [];
+    if (local.length > 0) {
+      const r = await run('bulk_apply_fill_variable', { items: local, fileKey: params.fileKey });
+      if (Array.isArray(r)) results.push(...r);
+    }
+    if (byKey.length > 0) {
+      const r = await run('bulk_apply_fill_variable_by_key', { items: byKey, fileKey: params.fileKey });
+      if (Array.isArray(r)) results.push(...r);
+    }
+    return jsonContent(results);
+  }
 );
 
 // ─── Variable Bindings ───────────────────────────────────────────────────────
 
 server.tool(
   'figma_set_variable_binding',
-  'Bind a variable to a node property (e.g. cornerRadius, strokeWeight).',
-  {
-    nodeId: z.string().describe('ID of the node'),
-    field: z.string().describe('Property to bind (e.g. cornerRadius, strokeWeight, opacity)'),
-    variableId: z.string().describe('ID of the variable'),
-    fileKey: z.string().optional().describe('Target a specific Figma file by its key'),
-  },
-  async (params) => jsonContent(await run('set_variable_binding', params))
-);
-
-server.tool(
-  'figma_bulk_set_variable_binding',
-  'Bind variables to node properties in bulk.',
+  'Bind variables to node properties on one or more nodes. Each item can use variableId (local) or variableKey (team library).',
   {
     items: z.array(z.object({
       nodeId: z.string(),
-      field: z.string(),
-      variableId: z.string(),
-    })).describe('Array of { nodeId, field, variableId } objects'),
+      field: z.string().describe('Property to bind (e.g. cornerRadius, strokeWeight, opacity)'),
+      variableId: z.string().optional().describe('Local variable ID'),
+      variableKey: z.string().optional().describe('Library variable key — use this instead of variableId for imported variables'),
+    })).describe('Array of { nodeId, field, variableId?, variableKey? } objects'),
     fileKey: z.string().optional().describe('Target a specific Figma file by its key'),
   },
-  async (params) => jsonContent(await run('bulk_set_variable_binding', params))
-);
-
-server.tool(
-  'figma_bulk_set_variable_binding_by_key',
-  'Import library variables by key and bind them to node properties.',
-  {
-    items: z.array(z.object({
-      nodeId: z.string(),
-      field: z.string(),
-      variableKey: z.string().describe('Library variable key'),
-    })).describe('Array of { nodeId, field, variableKey } objects'),
-    fileKey: z.string().optional().describe('Target a specific Figma file by its key'),
-  },
-  async (params) => jsonContent(await run('bulk_set_variable_binding_by_key', params))
+  async (params) => {
+    const local = params.items.filter(i => i.variableKey === undefined || i.variableKey === null);
+    const byKey = params.items.filter(i => i.variableKey !== undefined && i.variableKey !== null);
+    const results = [];
+    if (local.length > 0) {
+      const r = await run('bulk_set_variable_binding', { items: local, fileKey: params.fileKey });
+      if (Array.isArray(r)) results.push(...r);
+    }
+    if (byKey.length > 0) {
+      const r = await run('bulk_set_variable_binding_by_key', { items: byKey, fileKey: params.fileKey });
+      if (Array.isArray(r)) results.push(...r);
+    }
+    return jsonContent(results);
+  }
 );
 
 server.tool(
@@ -338,28 +307,16 @@ server.tool(
 
 server.tool(
   'figma_set_property',
-  'Set a property on a node. Supported: name, visible, opacity, blendMode, clipsContent, layoutMode, padding*, itemSpacing, cornerRadius, cornerSmoothing, rotation, constraints, reactions, and more.',
-  {
-    nodeId: z.string().describe('ID of the node'),
-    field: z.string().describe('Property name to set'),
-    value: z.any().describe('New value for the property'),
-    fileKey: z.string().optional().describe('Target a specific Figma file by its key'),
-  },
-  async (params) => jsonContent(await run('set_property', params))
-);
-
-server.tool(
-  'figma_bulk_set_property',
-  'Set properties on multiple nodes in bulk.',
+  'Set properties on one or more nodes. Supported fields: name, visible, opacity, blendMode, clipsContent, layoutMode, padding*, itemSpacing, cornerRadius, cornerSmoothing, rotation, constraints, reactions, and more.',
   {
     items: z.array(z.object({
       nodeId: z.string(),
-      field: z.string(),
-      value: z.any(),
+      field: z.string().describe('Property name to set'),
+      value: z.any().describe('New value for the property'),
     })).describe('Array of { nodeId, field, value } objects'),
     fileKey: z.string().optional().describe('Target a specific Figma file by its key'),
   },
-  async (params) => jsonContent(await run('bulk_set_property', params))
+  async (params) => jsonContent(await run('bulk_set_property', { items: params.items, fileKey: params.fileKey }))
 );
 
 // ─── Styles (Paint & Text) ───────────────────────────────────────────────────
@@ -380,48 +337,54 @@ server.tool(
 
 server.tool(
   'figma_duplicate_text_style',
-  'Duplicate a text style with optional overrides.',
+  'Duplicate one or more text styles with optional overrides.',
   {
-    styleId: z.string().describe('ID of the source text style'),
-    newName: z.string().describe('Name for the new style'),
-    overrides: z.record(z.string(), z.any()).optional().default({}).describe('Property overrides for the new style'),
+    items: z.array(z.object({
+      styleId: z.string().describe('ID of the source text style'),
+      newName: z.string().describe('Name for the new style'),
+      overrides: z.record(z.string(), z.any()).optional().default({}).describe('Property overrides for the new style'),
+    })).describe('Array of { styleId, newName, overrides? } objects'),
     fileKey: z.string().optional().describe('Target a specific Figma file by its key'),
   },
-  async (params) => jsonContent(await run('duplicate_text_style', params))
+  async (params) => jsonContent(await run('bulk_duplicate_text_style', { items: params.items, fileKey: params.fileKey }))
 );
 
 server.tool(
   'figma_set_style_property',
-  'Set a property on a paint or text style.',
+  'Set properties on one or more paint or text styles.',
   {
-    styleId: z.string().describe('ID of the style'),
-    field: z.string().describe('Property name'),
-    value: z.any().describe('New value'),
+    items: z.array(z.object({
+      styleId: z.string().describe('ID of the style'),
+      field: z.string().describe('Property name'),
+      value: z.any().describe('New value'),
+    })).describe('Array of { styleId, field, value } objects'),
     fileKey: z.string().optional().describe('Target a specific Figma file by its key'),
   },
-  async (params) => jsonContent(await run('set_style_property', params))
+  async (params) => jsonContent(await run('bulk_set_style_property', { items: params.items, fileKey: params.fileKey }))
 );
 
 server.tool(
   'figma_set_style_variable_binding',
-  'Bind a variable to a style property.',
+  'Bind variables to style properties on one or more styles.',
   {
-    styleId: z.string().describe('ID of the style'),
-    field: z.string().describe('Property to bind'),
-    variableId: z.string().describe('ID of the variable'),
+    items: z.array(z.object({
+      styleId: z.string().describe('ID of the style'),
+      field: z.string().describe('Property to bind'),
+      variableId: z.string().describe('ID of the variable'),
+    })).describe('Array of { styleId, field, variableId } objects'),
     fileKey: z.string().optional().describe('Target a specific Figma file by its key'),
   },
-  async (params) => jsonContent(await run('set_style_variable_binding', params))
+  async (params) => jsonContent(await run('bulk_set_style_variable_binding', { items: params.items, fileKey: params.fileKey }))
 );
 
 server.tool(
   'figma_delete_style',
-  'Delete a paint or text style.',
+  'Delete one or more paint or text styles.',
   {
-    styleId: z.string().describe('ID of the style to delete'),
+    styleIds: z.array(z.string()).describe('Array of style IDs to delete'),
     fileKey: z.string().optional().describe('Target a specific Figma file by its key'),
   },
-  async (params) => jsonContent(await run('delete_style', params))
+  async (params) => jsonContent(await run('bulk_delete_style', { styleIds: params.styleIds, fileKey: params.fileKey }))
 );
 
 // ─── Variables ───────────────────────────────────────────────────────────────
@@ -608,6 +571,145 @@ server.tool(
     fileKey: z.string().optional().describe('Target a specific Figma file by its key'),
   },
   async (params) => jsonContent(await run('export_node', params))
+);
+
+// ─── Screenshot Tools ──────────────────────────────────────────────────────
+
+server.tool(
+  'figma_screenshot_selection',
+  'Screenshot everything currently selected in Figma. Handles multi-selection by exporting each node individually with deduplication. Paginated — call again with page=2 for more if hasMore is true.',
+  {
+    format: z.enum(['PNG', 'JPG']).optional().default('PNG').describe('Image format'),
+    scale: z.number().optional().default(2).describe('Scale factor (1=1x, 2=2x retina, 4=4x)'),
+    page: z.number().optional().default(1).describe('Page number for paginated results'),
+    pageSize: z.number().optional().default(15).describe('Nodes per page (default 15)'),
+    fileKey: z.string().optional().describe('Target a specific Figma file by its key'),
+  },
+  async (params) => formatResult(await run('screenshot_selection', params))
+);
+
+server.tool(
+  'figma_screenshot_node',
+  'Screenshot a specific node by its ID. Works on any node type: frames, components, vectors, text, etc.',
+  {
+    nodeId: z.string().describe('ID of the node to screenshot'),
+    format: z.enum(['PNG', 'JPG']).optional().default('PNG').describe('Image format'),
+    scale: z.number().optional().default(2).describe('Scale factor (1=1x, 2=2x retina, 4=4x)'),
+    fileKey: z.string().optional().describe('Target a specific Figma file by its key'),
+  },
+  async (params) => formatResult(await run('screenshot_node', params))
+);
+
+server.tool(
+  'figma_screenshot_by_link',
+  'Take a Figma link and screenshot the node it points to. Parses the URL, finds the node, captures it — all in one call.',
+  {
+    url: z.string().describe('Full Figma URL with node-id parameter (e.g. https://www.figma.com/design/.../...?node-id=1-2)'),
+    format: z.enum(['PNG', 'JPG']).optional().default('PNG').describe('Image format'),
+    scale: z.number().optional().default(2).describe('Scale factor'),
+  },
+  async (params) => {
+    const u = new URL(params.url);
+    if (!u.hostname.includes('figma.com')) throw new Error('Not a Figma URL');
+    const parts = u.pathname.split('/').filter(Boolean);
+    const idx = parts.findIndex(p => p === 'design' || p === 'file' || p === 'proto');
+    const fileKey = idx !== -1 ? parts[idx + 1] : null;
+    let nodeId = u.searchParams.get('node-id');
+    if (nodeId) {
+      nodeId = decodeURIComponent(nodeId);
+      if (!nodeId.includes(':')) nodeId = nodeId.replace('-', ':');
+    }
+    if (!nodeId) throw new Error('No node-id found in URL. Add ?node-id=... to the link.');
+    return formatResult(await run('screenshot_node', { nodeId, format: params.format, scale: params.scale, fileKey }));
+  }
+);
+
+server.tool(
+  'figma_screenshot_page_overview',
+  'Screenshot the entire current Figma page as a birds-eye view. Falls back to exporting top-level frames individually if full-page export fails.',
+  {
+    format: z.enum(['PNG', 'JPG']).optional().default('JPG').describe('JPG recommended for large pages'),
+    scale: z.number().optional().default(1).describe('1x recommended for page overview'),
+    fileKey: z.string().optional().describe('Target a specific Figma file by its key'),
+  },
+  async (params) => formatResult(await run('screenshot_page_overview', params))
+);
+
+// ─── AI Exploration Tools ──────────────────────────────────────────────────
+
+server.tool(
+  'figma_find_and_screenshot',
+  'Search for nodes by name/type/text and screenshot all matches. The AI can visually inspect what it found. Paginated — call again with page=2 for more.',
+  {
+    query: z.string().describe('Search string — matches against node name and text content'),
+    type: z.string().optional().describe('Filter by node type: FRAME, COMPONENT, TEXT, RECTANGLE, etc.'),
+    rootNodeId: z.string().optional().describe('Search within this node only (defaults to current page)'),
+    page: z.number().optional().default(1).describe('Page number for paginated results'),
+    pageSize: z.number().optional().default(10).describe('Nodes per page'),
+    scale: z.number().optional().default(1).describe('1x recommended for search results'),
+    fileKey: z.string().optional().describe('Target a specific Figma file by its key'),
+  },
+  async (params) => formatResult(await run('find_and_screenshot', params))
+);
+
+server.tool(
+  'figma_screenshot_frame_thumbnails',
+  'Screenshot every top-level frame as thumbnails. Gives the AI a quick overview of everything on the page. Paginated — call again with page=2 for more.',
+  {
+    scale: z.number().optional().default(0.5).describe('Thumbnail scale (0.5 = half size)'),
+    page: z.number().optional().default(1).describe('Page number for paginated results'),
+    pageSize: z.number().optional().default(20).describe('Frames per page'),
+    fileKey: z.string().optional().describe('Target a specific Figma file by its key'),
+  },
+  async (params) => formatResult(await run('screenshot_frame_thumbnails', params))
+);
+
+server.tool(
+  'figma_screenshot_node_with_context',
+  'Screenshot a node AND its parent frame for visual context. Shows the element in its layout surroundings.',
+  {
+    nodeId: z.string().describe('ID of the specific node to focus on'),
+    format: z.enum(['PNG', 'JPG']).optional().default('PNG').describe('Image format'),
+    scale: z.number().optional().default(2).describe('Scale factor'),
+    fileKey: z.string().optional().describe('Target a specific Figma file by its key'),
+  },
+  async (params) => formatResult(await run('screenshot_node_with_context', params))
+);
+
+// ─── Viewport & Canvas Management ──────────────────────────────────────────
+
+server.tool(
+  'figma_get_viewport_info',
+  'Get the current viewport center, zoom level, and visible bounds. Lets the AI know what area of the canvas the user is looking at.',
+  { fileKey: z.string().optional().describe('Target a specific Figma file by its key') },
+  async (params) => jsonContent(await run('get_viewport_info', params))
+);
+
+server.tool(
+  'figma_find_visible_nodes',
+  'List which top-level frames are currently visible in the Figma viewport (what the user sees on screen).',
+  { fileKey: z.string().optional().describe('Target a specific Figma file by its key') },
+  async (params) => jsonContent(await run('find_visible_nodes', params))
+);
+
+server.tool(
+  'figma_screenshot_viewport_region',
+  'Screenshot what the user currently sees on their Figma canvas. Captures all frames visible in the viewport.',
+  {
+    scale: z.number().optional().default(1).describe('Scale factor'),
+    fileKey: z.string().optional().describe('Target a specific Figma file by its key'),
+  },
+  async (params) => formatResult(await run('screenshot_viewport_region', params))
+);
+
+server.tool(
+  'figma_scroll_to_node',
+  'Scroll the Figma canvas to center on a specific node. Creates shared visual context between AI and user.',
+  {
+    nodeId: z.string().describe('ID of the node to scroll to'),
+    fileKey: z.string().optional().describe('Target a specific Figma file by its key'),
+  },
+  async (params) => jsonContent(await run('scroll_to_node', params))
 );
 
 // ─── Advanced / Escape Hatch ─────────────────────────────────────────────────
