@@ -16,7 +16,7 @@ const plugins = new Map(); // fileKey → { ws, name }
 const pending = new Map(); // id → { sender: ws, fileKey, createdAt }
 
 // Purge pending entries that have been waiting longer than 600s (e.g. hung plugin)
-const PENDING_TTL_MS = 600000;
+const PENDING_TTL_MS = 30 * 60 * 1000;
 setInterval(() => {
   const now = Date.now();
   for (const [id, entry] of pending) {

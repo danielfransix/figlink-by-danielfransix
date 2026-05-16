@@ -218,6 +218,79 @@ async function handleCommand(command, params) {
       return (result && typeof result.then === 'function') ? await result : result;
     }
 
+    // ─── Node Manipulation (new) ──────────────────────────────────────────
+    case 'clone_node':
+      return cloneNode(params.nodeId, params.parentId, params.offsetX, params.offsetY);
+
+    case 'move_node':
+      return moveNode(params.nodeId, params.x, params.y);
+
+    case 'resize_node':
+      return resizeNode(params.nodeId, params.width, params.height);
+
+    // ─── Component Operations (new) ───────────────────────────────────────
+    case 'search_components':
+      return searchComponents(params.query, params.includeLibrary);
+
+    case 'get_component_details':
+      return getComponentDetails(params.nodeId);
+
+    case 'get_library_components':
+      return getLibraryComponents(params.query);
+
+    case 'instantiate_component':
+      return instantiateComponent(params.componentId, params.parentId, params.x, params.y);
+
+    case 'add_component_property':
+      return addComponentProperty(params.nodeId, params.property);
+
+    case 'edit_component_property':
+      return editComponentProperty(params.nodeId, params.propertyName, params.updates);
+
+    case 'delete_component_property':
+      return deleteComponentProperty(params.nodeId, params.propertyName);
+
+    case 'set_description':
+      return setDescription(params.nodeId, params.description);
+
+    case 'analyze_component_set':
+      return analyzeComponentSet(params.nodeId);
+
+    // ─── Variable CRUD (new) ──────────────────────────────────────────────
+    case 'create_variable_collection':
+      return createVariableCollection(params.name, params.modes);
+
+    case 'create_variable':
+      return createVariable(params);
+
+    case 'update_variable':
+      return updateVariable(params.variableId, params.valuesByMode, params.name);
+
+    case 'rename_variable':
+      return renameVariable(params.variableId, params.name);
+
+    case 'delete_variable':
+      return deleteVariable(params.variableId);
+
+    case 'delete_variable_collection':
+      return deleteVariableCollection(params.collectionId);
+
+    case 'add_mode':
+      return addMode(params.collectionId, params.modeName);
+
+    case 'rename_mode':
+      return renameMode(params.collectionId, params.oldName, params.newName);
+
+    // ─── Annotations & Image (new) ────────────────────────────────────────
+    case 'get_annotations':
+      return getAnnotations(params.nodeId, params.traverse);
+
+    case 'set_annotations':
+      return setAnnotations(params.nodeId, params.annotations);
+
+    case 'set_image_fill':
+      return setImageFill(params.nodeId, params.imageData, params.format, params.fillIndex);
+
     default:
       throw new Error(`Unknown command: ${command}`);
   }
@@ -616,35 +689,37 @@ function getNodes({ nodeId, depth = 3 }) {
   return serializeNode(root, Math.max(0, depth));
 }
 
-function getNodesFlat({ nodeId, skipVectors = true, skipInstanceChildren = true }) {
+async function getNodesFlat({ nodeId, skipVectors = true, skipInstanceChildren = true }) {
   const root = nodeId ? figma.getNodeById(nodeId) : figma.currentPage;
   if (!root) throw new Error(`Node ${nodeId} not found`);
 
   const VECTOR_TYPES = new Set(['VECTOR', 'IMAGE', 'BOOLEAN_OPERATION', 'STAR', 'POLYGON', 'ELLIPSE', 'LINE']);
   const results = [];
+  const stack = [{ node: root, insideInstance: false, depth: 0 }];
+  let count = 0;
 
-  function walk(node, insideInstance, depth = 0) {
-    if (depth > 100) return;
+  while (stack.length > 0) {
+    const { node, insideInstance, depth } = stack.pop();
+    if (!node || depth > 100) continue;
+
+    count++;
+    if (count % 1000 === 0) {
+      await new Promise(r => setTimeout(r, 5));
+    }
+
     const isVectorLike = VECTOR_TYPES.has(node.type);
     const isInstanceChild = node.id.includes(';');
 
-    if (skipVectors && isVectorLike) return;
-    if (skipInstanceChildren && isInstanceChild) return;
-
-    results.push(serializeNode(node, 0));
+    if (!(skipVectors && isVectorLike) && !(skipInstanceChildren && isInstanceChild)) {
+      results.push(serializeNode(node, 0));
+    }
 
     if ('children' in node) {
       const nowInsideInstance = insideInstance || node.type === 'INSTANCE';
-      for (const child of node.children) {
-        walk(child, nowInsideInstance, depth + 1);
+      for (let i = node.children.length - 1; i >= 0; i--) {
+        stack.push({ node: node.children[i], insideInstance: nowInsideInstance, depth: depth + 1 });
       }
     }
-  }
-
-  if ('children' in root) {
-    for (const child of root.children) walk(child, false);
-  } else {
-    walk(root, false);
   }
 
   return results;
@@ -1531,4 +1606,353 @@ function groupAsComponentSet(nodeIds, name, parentId) {
   const set = figma.combineAsVariants(nodes, parentId ? figma.getNodeById(parentId) : figma.currentPage);
   set.name = name;
   return { ok: true, id: set.id, name: set.name };
+}
+
+// ─── Node Manipulation (new) ─────────────────────────────────────────────────
+
+function cloneNode(nodeId, parentId, offsetX, offsetY) {
+  const node = figma.getNodeById(nodeId);
+  if (!node) throw new Error(`Node ${nodeId} not found`);
+  const clone = node.clone();
+  if (parentId) {
+    const parent = figma.getNodeById(parentId);
+    if (!parent || !('appendChild' in parent)) throw new Error(`Parent ${parentId} not found or cannot contain children`);
+    parent.appendChild(clone);
+  }
+  if (offsetX !== undefined) clone.x += offsetX;
+  if (offsetY !== undefined) clone.y += offsetY;
+  return { ok: true, id: clone.id, name: clone.name, type: clone.type };
+}
+
+function moveNode(nodeId, x, y) {
+  const node = figma.getNodeById(nodeId);
+  if (!node) throw new Error(`Node ${nodeId} not found`);
+  if (x !== undefined) node.x = x;
+  if (y !== undefined) node.y = y;
+  return { ok: true, nodeId, x: node.x, y: node.y };
+}
+
+function resizeNode(nodeId, width, height) {
+  const node = figma.getNodeById(nodeId);
+  if (!node) throw new Error(`Node ${nodeId} not found`);
+  if (width !== undefined) node.resize(width, node.height);
+  if (height !== undefined) node.resize(node.width, height);
+  return { ok: true, nodeId, width: node.width, height: node.height };
+}
+
+// ─── Component Operations (new) ──────────────────────────────────────────────
+
+function searchComponents(query, includeLibrary) {
+  const q = (query || '').toLowerCase();
+  const results = [];
+
+  function walk(node) {
+    if ((node.type === 'COMPONENT' || node.type === 'COMPONENT_SET') && node.name.toLowerCase().includes(q)) {
+      const foundPage = figma.root.children.find(p => p.children.includes(node));
+      results.push({
+        id: node.id, name: node.name, type: node.type,
+        pageName: foundPage ? foundPage.name : null,
+      });
+    }
+    if ('children' in node) {
+      for (const child of node.children) walk(child);
+    }
+  }
+
+  for (const page of figma.root.children) {
+    for (const node of page.children) walk(node);
+  }
+
+  if (includeLibrary && typeof figma.importComponentSetByKeyAsync === 'function') {
+    // Can't enumerate library without API token; return only local results with flag
+    results.forEach(r => r.librarySearchAttempted = true);
+  }
+
+  return { results, count: results.length, query: q };
+}
+
+function getComponentDetails(nodeId) {
+  const node = figma.getNodeById(nodeId);
+  if (!node) throw new Error(`Node ${nodeId} not found`);
+  if (node.type !== 'COMPONENT' && node.type !== 'COMPONENT_SET') {
+    throw new Error(`Node ${nodeId} is not a COMPONENT or COMPONENT_SET (got ${node.type})`);
+  }
+
+  const details = { id: node.id, name: node.name, type: node.type, description: node.description || null };
+
+  if (node.type === 'COMPONENT_SET') {
+    details.variants = node.children.map(c => ({
+      id: c.id, name: c.name, type: c.type,
+    }));
+    if (node.variantGroupProperties) {
+      details.variantProperties = Object.entries(node.variantGroupProperties).map(([prop, values]) => ({
+        property: prop, values: Array.from(values),
+      }));
+    }
+  }
+
+  if ('componentPropertyDefinitions' in node && node.componentPropertyDefinitions) {
+    details.componentProperties = Object.entries(node.componentPropertyDefinitions).map(([name, def]) => ({
+      name, type: def.type, defaultValue: def.defaultValue, preferredValues: def.variantOptions || null,
+    }));
+  }
+
+  return details;
+}
+
+function getLibraryComponents(query) {
+  // Library component enumeration requires the REST API.
+  // This returns an informative message directing users to use figma_execute for explicit-key imports.
+  return {
+    note: 'Library component enumeration requires the Figma REST API. Use figma_execute to import by key via figma.importComponentSetByKeyAsync(key) or figma.importComponentByKeyAsync(key).',
+    hint: 'If you have a specific component key, use figma_import_variables_by_key pattern or figma_execute to import it.',
+    query,
+  };
+}
+
+function instantiateComponent(componentId, parentId, x, y) {
+  const component = figma.getNodeById(componentId);
+  if (!component) throw new Error(`Component ${componentId} not found`);
+  if (component.type !== 'COMPONENT') {
+    if (component.type === 'COMPONENT_SET') {
+      // Instantiate the default variant
+      const defaultVariant = component.defaultVariant || component.children[0];
+      if (!defaultVariant) throw new Error(`Component set ${componentId} has no variants`);
+      const instance = defaultVariant.createInstance();
+      return placeInstance(instance, parentId, x, y);
+    }
+    throw new Error(`Node ${componentId} is not a COMPONENT (got ${component.type})`);
+  }
+  const instance = component.createInstance();
+  return placeInstance(instance, parentId, x, y);
+}
+
+function placeInstance(instance, parentId, x, y) {
+  if (parentId) {
+    const parent = figma.getNodeById(parentId);
+    if (!parent || !('appendChild' in parent)) throw new Error(`Parent ${parentId} not found or cannot contain children`);
+    parent.appendChild(instance);
+  }
+  if (x !== undefined) instance.x = x;
+  if (y !== undefined) instance.y = y;
+  return { ok: true, id: instance.id, name: instance.name, type: instance.type, mainComponentId: instance.mainComponent ? instance.mainComponent.id : undefined };
+}
+
+function addComponentProperty(nodeId, property) {
+  const node = figma.getNodeById(nodeId);
+  if (!node) throw new Error(`Node ${nodeId} not found`);
+  if (node.type !== 'COMPONENT' && node.type !== 'COMPONENT_SET') {
+    throw new Error(`Node ${nodeId} is not a COMPONENT or COMPONENT_SET`);
+  }
+  node.addComponentProperty(property.name, property.type, property.defaultValue, property.options);
+  return { ok: true, nodeId, propertyName: property.name };
+}
+
+function editComponentProperty(nodeId, propertyName, updates) {
+  const node = figma.getNodeById(nodeId);
+  if (!node) throw new Error(`Node ${nodeId} not found`);
+  if (node.type !== 'COMPONENT' && node.type !== 'COMPONENT_SET') {
+    throw new Error(`Node ${nodeId} is not a COMPONENT or COMPONENT_SET`);
+  }
+  node.editComponentProperty(propertyName, updates);
+  return { ok: true, nodeId, propertyName };
+}
+
+function deleteComponentProperty(nodeId, propertyName) {
+  const node = figma.getNodeById(nodeId);
+  if (!node) throw new Error(`Node ${nodeId} not found`);
+  if (node.type !== 'COMPONENT' && node.type !== 'COMPONENT_SET') {
+    throw new Error(`Node ${nodeId} is not a COMPONENT or COMPONENT_SET`);
+  }
+  node.deleteComponentProperty(propertyName);
+  return { ok: true, nodeId, propertyName };
+}
+
+function setDescription(nodeId, description) {
+  const node = figma.getNodeById(nodeId);
+  if (!node) throw new Error(`Node ${nodeId} not found`);
+  node.description = description;
+  return { ok: true, nodeId, description };
+}
+
+function analyzeComponentSet(nodeId) {
+  const node = figma.getNodeById(nodeId);
+  if (!node || node.type !== 'COMPONENT_SET') throw new Error(`Node ${nodeId} not found or not a COMPONENT_SET`);
+
+  const variants = node.children.filter(c => c.type === 'COMPONENT');
+  const analysis = {
+    id: node.id, name: node.name, variantCount: variants.length,
+    variantProperties: node.variantGroupProperties ? Object.entries(node.variantGroupProperties).map(([k, v]) => ({
+      property: k, values: Array.from(v),
+    })) : [],
+    variants: variants.map(v => {
+      const overrides = [];
+      if (v.componentPropertyDefinitions) {
+        for (const [propName, def] of Object.entries(v.componentPropertyDefinitions)) {
+          overrides.push({ name: propName, type: def.type, defaultValue: def.defaultValue });
+        }
+      }
+      return { id: v.id, name: v.name, propertyOverrides: overrides };
+    }),
+  };
+
+  // Find divergences between variants
+  if (variants.length >= 2) {
+    analysis.divergences = [];
+    const first = variants[0];
+    const firstProps = serializeNode(first, 99);
+    for (let i = 1; i < variants.length; i++) {
+      const curr = variants[i];
+      const currProps = serializeNode(curr, 99);
+      const diffs = deepDiff(firstProps, currProps, first.name, curr.name);
+      if (diffs.length > 0) analysis.divergences.push(...diffs);
+    }
+  }
+
+  return analysis;
+}
+
+// ─── Variable CRUD (new) ─────────────────────────────────────────────────────
+
+function createVariableCollection(name, modes) {
+  const collection = figma.variables.createVariableCollection(name);
+  const result = { ok: true, id: collection.id, name: collection.name, modes: collection.modes.map(m => ({ modeId: m.modeId, name: m.name })) };
+  if (modes && Array.isArray(modes)) {
+    for (const modeName of modes) {
+      if (modeName !== 'Mode 1') {
+        collection.addMode(modeName);
+      }
+    }
+    result.modes = collection.modes.map(m => ({ modeId: m.modeId, name: m.name }));
+  }
+  return result;
+}
+
+function createVariable(params) {
+  const { collectionId, name, resolvedType, valuesByMode } = params;
+  const collection = figma.variables.getVariableCollectionById(collectionId);
+  if (!collection) throw new Error(`Collection ${collectionId} not found`);
+  const variable = figma.variables.createVariable(name, collection, resolvedType || 'COLOR');
+  if (valuesByMode) {
+    for (const [modeId, value] of Object.entries(valuesByMode)) {
+      variable.setValueForMode(modeId, value);
+    }
+  }
+  return { ok: true, id: variable.id, name: variable.name, resolvedType: variable.resolvedType };
+}
+
+function updateVariable(variableId, valuesByMode, name) {
+  const variable = figma.variables.getVariableById(variableId);
+  if (!variable) throw new Error(`Variable ${variableId} not found`);
+  if (name) variable.name = name;
+  if (valuesByMode) {
+    for (const [modeId, value] of Object.entries(valuesByMode)) {
+      variable.setValueForMode(modeId, value);
+    }
+  }
+  return { ok: true, variableId, name: variable.name, valuesByMode: variable.valuesByMode };
+}
+
+function renameVariable(variableId, name) {
+  const variable = figma.variables.getVariableById(variableId);
+  if (!variable) throw new Error(`Variable ${variableId} not found`);
+  variable.name = name;
+  return { ok: true, variableId, newName: name };
+}
+
+function deleteVariable(variableId) {
+  const variable = figma.variables.getVariableById(variableId);
+  if (!variable) throw new Error(`Variable ${variableId} not found`);
+  variable.remove();
+  return { ok: true, variableId };
+}
+
+function deleteVariableCollection(collectionId) {
+  const collection = figma.variables.getVariableCollectionById(collectionId);
+  if (!collection) throw new Error(`Collection ${collectionId} not found`);
+  collection.remove();
+  return { ok: true, collectionId };
+}
+
+function addMode(collectionId, modeName) {
+  const collection = figma.variables.getVariableCollectionById(collectionId);
+  if (!collection) throw new Error(`Collection ${collectionId} not found`);
+  collection.addMode(modeName);
+  return { ok: true, collectionId, modes: collection.modes.map(m => ({ modeId: m.modeId, name: m.name })) };
+}
+
+function renameMode(collectionId, oldName, newName) {
+  const collection = figma.variables.getVariableCollectionById(collectionId);
+  if (!collection) throw new Error(`Collection ${collectionId} not found`);
+  const mode = collection.modes.find(m => m.name === oldName);
+  if (!mode) throw new Error(`Mode "${oldName}" not found in collection ${collectionId}`);
+  collection.setModeName(mode.modeId, newName);
+  return { ok: true, collectionId, oldName, newName };
+}
+
+// ─── Annotations & Image (new) ───────────────────────────────────────────────
+
+function getAnnotations(nodeId, traverse) {
+  const node = nodeId ? figma.getNodeById(nodeId) : figma.currentPage;
+  if (!node) throw new Error(`Node ${nodeId} not found`);
+
+  const results = [];
+  function collect(n) {
+    if (n.annotations && n.annotations.length > 0) {
+      for (const a of n.annotations) {
+        results.push({ nodeId: n.id, nodeName: n.name, label: a.label, message: a.message, properties: a.properties, status: a.status });
+      }
+    }
+    if (traverse && 'children' in n) {
+      for (const child of n.children) collect(child);
+    }
+  }
+  collect(node);
+  return { results, count: results.length, rootId: node.id };
+}
+
+function setAnnotations(nodeId, annotations) {
+  const node = figma.getNodeById(nodeId);
+  if (!node) throw new Error(`Node ${nodeId} not found`);
+  node.annotations = annotations.map(a => ({
+    label: a.label || '',
+    message: a.message || '',
+    properties: a.properties || [],
+    status: a.status || null,
+  }));
+  return { ok: true, nodeId, count: annotations.length };
+}
+
+function setImageFill(nodeId, imageData, format, fillIndex) {
+  const node = figma.getNodeById(nodeId);
+  if (!node) throw new Error(`Node ${nodeId} not found`);
+  if (!('fills' in node)) throw new Error(`Node ${nodeId} does not support fills`);
+
+  const idx = fillIndex !== undefined ? fillIndex : 0;
+  const imageBytes = typeof imageData === 'string' ? figma.base64Encode(imageData) : imageData;
+  const img = figma.createImage(imageBytes);
+  const fill = { type: 'IMAGE', imageHash: img.hash, scaleMode: 'FILL' };
+  const fills = structuredClone(node.fills);
+  while (fills.length <= idx) fills.push({ type: 'SOLID', color: { r: 1, g: 1, b: 1 } });
+  fills[idx] = fill;
+  node.fills = fills;
+  return { ok: true, nodeId, fillIndex: idx, imageHash: img.hash };
+}
+
+// ─── Deep Diff helper for analyzeComponentSet ────────────────────────────────
+
+function deepDiff(a, b, nameA, nameB, prefix) {
+  const diffs = [];
+  const p = prefix || '';
+  if (typeof a !== typeof b) { diffs.push({ path: p, [nameA]: a, [nameB]: b }); return diffs; }
+  if (a === null || b === null) { if (a !== b) diffs.push({ path: p, [nameA]: a, [nameB]: b }); return diffs; }
+  if (typeof a !== 'object') { if (a !== b) diffs.push({ path: p, [nameA]: a, [nameB]: b }); return diffs; }
+  if (Array.isArray(a) !== Array.isArray(b)) { diffs.push({ path: p, [nameA]: a, [nameB]: b }); return diffs; }
+  const keys = new Set([...Object.keys(a || {}), ...Object.keys(b || {})]);
+  for (const k of keys) {
+    if (k === 'id' || k === 'name') continue;
+    const childDiffs = deepDiff(a[k], b[k], nameA, nameB, p ? `${p}.${k}` : k);
+    diffs.push(...childDiffs);
+  }
+  return diffs;
 }
