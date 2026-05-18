@@ -9,7 +9,7 @@ Figlink supports **three ways** to connect your AI to Figma:
 | Mode | How the AI talks to Figma | Best for |
 |------|--------------------------|----------|
 | **1. Native IDE** | AI runs commands directly from your IDE's terminal | Cursor, Windsurf, Trae, VS Code with Copilot |
-| **2. MCP — Local IDE** | AI connects to a local MCP server on `localhost:3000` | Any IDE with MCP support (Claude, Cursor, Copilot) |
+| **2. MCP — Local IDE** | AI connects to a local MCP server on `localhost:39399` | Any IDE with MCP support (Claude, Cursor, Copilot) |
 | **3. MCP — Web AI** | Same MCP server, exposed to the internet via ngrok | Notion AI, Claude web, ChatGPT, any web-based AI |
 
 All three modes work with the same plugin and link server. You only install the plugin once. Choose the mode that fits your workflow.
@@ -136,7 +136,7 @@ Instead of the AI running terminal commands, it connects to a local MCP server t
 
 This launches two servers in separate windows:
 - **Figlink Server** — WebSocket on `ws://localhost:9001`
-- **MCP Server** — HTTP on `http://localhost:3000`
+- **MCP Server** — HTTP on `http://localhost:39399`
 
 Leave both windows running.
 
@@ -157,7 +157,8 @@ Add this to your IDE's MCP configuration. The exact location varies:
 {
   "mcpServers": {
     "figlink": {
-      "url": "http://localhost:3000/"
+      "url": "http://localhost:39399/",
+      "transport": "streamable-http"
     }
   }
 }
@@ -167,7 +168,7 @@ No authentication or API keys are needed — the server runs on your machine.
 
 ### Use it
 
-Once connected, your AI will see all 74 Figlink tools. You can prompt naturally — the AI discovers what tools are available and calls them as needed:
+Once connected, your AI will see all 76 Figlink tools. You can prompt naturally — the AI discovers what tools are available and calls them as needed:
 
 - *"List all the components in my design system file"*
 - *"Search for button components and show me their properties"*
@@ -209,13 +210,13 @@ Open your Figma file and run the Figlink plugin. The dot turns green when connec
 In a **new terminal**, run:
 
 ```
-ngrok http 3000
+ngrok http 39399
 ```
 
 You'll see output like:
 
 ```
-Forwarding  https://violet-recapture-brewing.ngrok-free.dev → http://localhost:3000
+Forwarding  https://violet-recapture-brewing.ngrok-free.dev → http://localhost:39399
 ```
 
 Copy the `https://xxxx.ngrok-free.dev` URL. This is your public MCP endpoint.
@@ -231,14 +232,14 @@ Paste the ngrok URL into your web AI's MCP endpoint field:
 **No bearer token or authentication is needed.** If your AI platform requires a field, leave it empty or use ngrok's optional basic auth:
 
 ```
-ngrok http 3000 --basic-auth "user:pass"
+ngrok http 39399 --basic-auth "user:pass"
 ```
 
 Then provide those credentials in your AI's MCP configuration.
 
 ### Use it
 
-Your web AI now has the same 74 tools as the local IDE. Prompt naturally — the AI discovers the tools and calls them:
+Your web AI now has the same 76 tools as the local IDE. Prompt naturally — the AI discovers the tools and calls them:
 
 - *"Read my Figma file and tell me how many components it has"*
 - *"Find all text layers using the wrong font and fix them"*
@@ -330,9 +331,9 @@ If the AI generates any temporary files, they go into the `temp/` folder. To cle
 | `figlink-codebase/figma-plugin/` | The Figma plugin (`code.js`, `manifest.json`) |
 | `figlink-codebase/link-server/` | WebSocket relay server (`ws://localhost:9001`) |
 | `figlink-codebase/prompts/` | System prompt and prompt library |
-| `figma-mcp/` | MCP server — exposes Figlink as 74 typed tools |
+| `figma-mcp/` | MCP server — exposes Figlink as 76 typed tools |
 | `figma-mcp/bridge.js` | WebSocket bridge between MCP and the link server |
-| `figma-mcp/server.js` | MCP HTTP server (`http://localhost:3000`) |
+| `figma-mcp/server.js` | MCP HTTP server (`http://localhost:39399`) |
 
 ---
 

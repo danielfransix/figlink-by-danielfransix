@@ -507,14 +507,15 @@ server.tool(
 );
 
 server.tool(
-  'figma_swap_button_instances',
-  'Find all button-like instances in a container and swap them to a new component set, preserving text.',
+  'figma_swap_instances',
+  'Find all instances whose name matches a pattern in a container and swap them to a new component set, preserving text.',
   {
-    containerId: z.string().describe('ID of the container to search for buttons'),
+    containerId: z.string().describe('ID of the container to search for instances'),
     newComponentSetId: z.string().describe('ID or key of the new component set to swap to'),
+    searchPattern: z.string().optional().default('button').describe('Substring to match in instance names (case-insensitive). Default: "button". Use empty string "" to match ALL instances.'),
     fileKey: z.string().optional().describe('Target a specific Figma file by its key'),
   },
-  async (params) => jsonContent(await run('swap_button_instances', params))
+  async (params) => jsonContent(await run('swap_instances', params))
 );
 
 // ─── Instance Override Reset ─────────────────────────────────────────────────

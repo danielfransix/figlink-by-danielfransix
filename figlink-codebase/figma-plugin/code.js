@@ -175,8 +175,8 @@ async function handleCommand(command, params) {
     case 'clone_component_set':
       return cloneComponentSet(params.nodeId, params.newName, params.optionsToKeep, params.height, params.parentFrameId);
 
-    case 'swap_button_instances':
-      return swapButtonInstances(params.containerId, params.newComponentSetId);
+    case 'swap_instances':
+      return swapInstances(params.containerId, params.newComponentSetId, params.searchPattern);
 
     case 'create_node':
       return await createNode(params);
@@ -1819,7 +1819,7 @@ function cloneComponentSet(nodeId, newName, optionsToKeep, height, parentFrameId
   return { ok: true, oldId: nodeId, newId: clone.id, newName: clone.name };
 }
 
-async function swapButtonInstances(containerId, newComponentSetId) {
+async function swapInstances(containerId, newComponentSetId, searchPattern) {
   const container = figma.getNodeById(containerId);
   if (!container) throw new Error(`Container ${containerId} not found`);
 
@@ -1838,8 +1838,8 @@ async function swapButtonInstances(containerId, newComponentSetId) {
 
   const results = [];
   
-  // Find all instances that look like buttons
-  const instances = container.findAll(n => n.type === 'INSTANCE' && n.name.toLowerCase().includes('button'));
+  const pattern = (searchPattern || 'button').toLowerCase();
+  const instances = container.findAll(n => n.type === 'INSTANCE' && n.name.toLowerCase().includes(pattern));
   
   for (const instance of instances) {
     try {

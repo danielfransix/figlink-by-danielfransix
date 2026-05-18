@@ -215,10 +215,10 @@ A summary of what the plugin exposes. All commands are sent via `tools/figma.js`
 | **Text** | `set_characters`, `bulk_set_characters` |
 | **Rename** | `rename_node`, `bulk_rename` |
 | **Structure** | `create_node`, `create_node_tree`, `set_node_raw`, `delete_node`, `flatten_node`, `group_as_component_set` |
-| **Components** | `reset_instance_spacing`, `reset_instance_text_styles`, `swap_button_instances`, `clone_component_set`, `unclip_text_parent_frames` |
+| **Components** | `reset_instance_spacing`, `reset_instance_text_styles`, `swap_instances`, `clone_component_set`, `unclip_text_parent_frames` |
 | **Utilities** | `parse_link` — extracts `fileKey` and `nodeId` from any Figma URL, runs without a server |
 
-For full parameter details, see the handler implementations in `figma-plugin/code.js` and the architecture notes in `docs/TECHNICAL_ARCHITECTURE.md`.
+For full parameter details, see the handler implementations in `figma-plugin/code.js` and the architecture notes in `TECHNICAL_ARCHITECTURE.md` (repo root).
 
 ---
 
