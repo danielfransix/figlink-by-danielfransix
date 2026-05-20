@@ -1074,6 +1074,16 @@ async function handleMcpRequest(req, res) {
     res.writeHead(400, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ jsonrpc: '2.0', error: { code: -32000, message: 'Bad Request: No valid session ID' }, id: null }));
     return;
+  } else if (req.method === 'GET' || req.method === 'HEAD') {
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({
+      server: 'figlink-mcp',
+      version: '1.0.0',
+      status: 'ok',
+      protocol: 'MCP Streamable HTTP',
+      hint: 'Send POST / with {"jsonrpc":"2.0","method":"initialize","id":"1"} to start an MCP session',
+    }));
+    return;
   } else {
     res.writeHead(400, { 'Content-Type': 'application/json' });
     res.end(JSON.stringify({ jsonrpc: '2.0', error: { code: -32000, message: 'Bad Request: No valid session ID' }, id: null }));
