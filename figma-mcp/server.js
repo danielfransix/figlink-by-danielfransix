@@ -1,13 +1,16 @@
 const { McpServer } = require('@modelcontextprotocol/sdk/server/mcp.js');
 const { StreamableHTTPServerTransport } = require('@modelcontextprotocol/sdk/server/streamableHttp.js');
+const { SSEServerTransport } = require('@modelcontextprotocol/sdk/server/sse.js');
 const { randomUUID } = require('crypto');
 const http = require('http');
+const { URL, URLSearchParams } = require('url');
 const { z } = require('zod');
 const { bridge } = require('./bridge.js');
 
 const PORT = parseInt(process.env.PORT || '39399', 10);
 
-const transports = {};
+const streamableTransports = {};
+const sseTransports = {};
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -1027,8 +1030,8 @@ async function handleMcpRequest(req, res) {
 
   let transport;
 
-  if (sessionId && transports[sessionId]) {
-    transport = transports[sessionId];
+  if (sessionId && streamableTransports[sessionId]) {
+    transport = streamableTransports[sessionId];
   } else if (req.method === 'POST') {
     const body = await new Promise((resolve) => {
       let data = '';
@@ -1049,11 +1052,11 @@ async function handleMcpRequest(req, res) {
       transport = new StreamableHTTPServerTransport({
         sessionIdGenerator: () => randomUUID(),
         onsessioninitialized: (id) => {
-          transports[id] = transport;
+          streamableTransports[id] = transport;
           console.log(`[figlink-mcp] Session initialized: ${id.slice(0, 8)}...`);
         },
         onsessionclosed: (id) => {
-          delete transports[id];
+          delete streamableTransports[id];
           console.log(`[figlink-mcp] Session closed: ${id.slice(0, 8)}...`);
         },
       });
@@ -1075,14 +1078,17 @@ async function handleMcpRequest(req, res) {
     res.end(JSON.stringify({ jsonrpc: '2.0', error: { code: -32000, message: 'Bad Request: No valid session ID' }, id: null }));
     return;
   } else if (req.method === 'GET' || req.method === 'HEAD') {
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({
-      server: 'figlink-mcp',
-      version: '1.0.0',
-      status: 'ok',
-      protocol: 'MCP Streamable HTTP',
-      hint: 'Send POST / with {"jsonrpc":"2.0","method":"initialize","id":"1"} to start an MCP session',
-    }));
+    const transport = new SSEServerTransport('/messages', res);
+    sseTransports[transport.sessionId] = transport;
+
+    res.on('close', () => {
+      delete sseTransports[transport.sessionId];
+      console.log(`[figlink-mcp] SSE session closed: ${transport.sessionId.slice(0, 8)}...`);
+    });
+
+    const mcpServer = createMcpServer();
+    await mcpServer.connect(transport);
+    console.log(`[figlink-mcp] SSE session established: ${transport.sessionId.slice(0, 8)}...`);
     return;
   } else {
     res.writeHead(400, { 'Content-Type': 'application/json' });
@@ -1131,6 +1137,50 @@ async function main() {
       return;
     }
 
+    if (urlPath === '/sse' && req.method === 'GET') {
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+      const transport = new SSEServerTransport('/messages', res);
+      sseTransports[transport.sessionId] = transport;
+
+      res.on('close', () => {
+        delete sseTransports[transport.sessionId];
+        console.log(`[figlink-mcp] SSE session closed: ${transport.sessionId.slice(0, 8)}...`);
+      });
+
+      const mcpServer = createMcpServer();
+      await mcpServer.connect(transport);
+      console.log(`[figlink-mcp] SSE session established: ${transport.sessionId.slice(0, 8)}...`);
+      return;
+    }
+
+    if (urlPath === '/messages' && req.method === 'POST') {
+      const parsedUrl = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+      const sessionId = parsedUrl.searchParams.get('sessionId');
+
+      if (!sessionId) {
+        res.writeHead(400).end('Missing sessionId parameter');
+        return;
+      }
+
+      const transport = sseTransports[sessionId];
+      if (!transport) {
+        res.writeHead(404).end('Session not found');
+        return;
+      }
+
+      let body = '';
+      for await (const chunk of req) {
+        body += chunk;
+      }
+      let parsedBody;
+      try { parsedBody = body ? JSON.parse(body) : undefined; } catch { parsedBody = undefined; }
+
+      await transport.handlePostMessage(req, res, parsedBody);
+      return;
+    }
+
     await handleMcpRequest(req, res);
   });
 
@@ -1141,6 +1191,7 @@ async function main() {
     console.log('  ║   Figlink MCP Server — Ready                          ║');
     console.log('  ║                                                      ║');
     console.log(`  ║   HTTP:  http://localhost:${PORT}                          ║`);
+    console.log(`  ║   SSE:   http://localhost:${PORT}/sse                       ║`);
     console.log(`  ║   Figlink: ${bridge.url}                               ║`);
     console.log('  ║                                                      ║');
     console.log('  ║   To expose to the web, run ngrok:                    ║');
@@ -1154,9 +1205,13 @@ async function main() {
 
   process.on('SIGINT', () => {
     console.log('\n[figlink-mcp] Shutting down...');
-    for (const id of Object.keys(transports)) {
-      transports[id].close().catch(() => {});
-      delete transports[id];
+    for (const id of Object.keys(streamableTransports)) {
+      streamableTransports[id].close().catch(() => {});
+      delete streamableTransports[id];
+    }
+    for (const id of Object.keys(sseTransports)) {
+      sseTransports[id].close().catch(() => {});
+      delete sseTransports[id];
     }
     bridge.disconnect();
     httpServer.close();
@@ -1164,9 +1219,13 @@ async function main() {
   });
 
   process.on('SIGTERM', () => {
-    for (const id of Object.keys(transports)) {
-      transports[id].close().catch(() => {});
-      delete transports[id];
+    for (const id of Object.keys(streamableTransports)) {
+      streamableTransports[id].close().catch(() => {});
+      delete streamableTransports[id];
+    }
+    for (const id of Object.keys(sseTransports)) {
+      sseTransports[id].close().catch(() => {});
+      delete sseTransports[id];
     }
     bridge.disconnect();
     httpServer.close();
