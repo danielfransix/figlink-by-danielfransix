@@ -43,6 +43,114 @@ async function runFigmaCode(code, timeoutMs = 2400000) {
   return await send('figma_execute', { code }, timeoutMs);
 }
 
+// ─── Sentence-case page code builder ─────────────────────────────────────────
+// Generates a self-contained Figma script that lints a single page by ID.
+// Uses String.raw so regex patterns and \n inside the generated code are literal.
+
+function makeSCPageCode(pageId) {
+  return String.raw`
+(async () => {
+  const ACRONYMS = new Set([
+    'HRIS','HR','HQ','API','IT','UI','UX','ID','CRM','ERP','SSO','OKR','KPI',
+    'NDA','PTO','CTR','SLA','KYC','AML','PDF','CSV','PIN','OTP','SMS','FAQ',
+    'TOS','VAT','TAX','URL','iOS','macOS','AM','PM','T&A','TA',
+  ]);
+  const BRAND_FIXES = [
+    [/PaidHR/gi,   'PaidHR'],
+    [/PaidLife/gi, 'PaidLife'],
+  ];
+  function applyBrandFixes(text) {
+    let t = text;
+    for (const [re, fix] of BRAND_FIXES) t = t.replace(re, fix);
+    return t;
+  }
+  function isAcronym(w) {
+    const c = w.replace(/[^a-zA-Z]/g, '');
+    if (ACRONYMS.has(c)) return true;
+    if (ACRONYMS.has(c.toUpperCase())) return true;  // case-insensitive (am → AM)
+    if (/^[A-Z]{2}/.test(w)) return true;            // two leading caps = likely acronym
+    return false;
+  }
+  function toSC(text) {
+    return text.split('\n').map(line => {
+      if (!line) return line;
+      const tokens = [];
+      let cur = '';
+      for (const ch of line) {
+        if (/[a-zA-Z''']/.test(ch)) { cur += ch; }
+        else { if (cur) { tokens.push({t:'w',v:cur}); cur=''; } tokens.push({t:'s',v:ch}); }
+      }
+      if (cur) tokens.push({t:'w',v:cur});
+      let capNext = true, afterDot = false, digitBeforeWord = false;
+      return tokens.map(tok => {
+        if (tok.t === 's') {
+          if (capNext && /\d/.test(tok.v)) digitBeforeWord = true;
+          if (/[.!?]/.test(tok.v)) { afterDot = true; }
+          else if (afterDot && /\s/.test(tok.v)) { capNext = true; afterDot = false; digitBeforeWord = false; }
+          else if (!/\s/.test(tok.v)) { afterDot = false; }
+          return tok.v;
+        }
+        const w = tok.v;
+        if (w === 'I' || /^I[''']/.test(w)) { capNext = false; afterDot = false; digitBeforeWord = false; return w; }
+        if (isAcronym(w)) { capNext = false; afterDot = false; digitBeforeWord = false; return w; }
+        if (capNext) {
+          const result = digitBeforeWord ? w.toLowerCase() : w[0].toUpperCase() + w.slice(1).toLowerCase();
+          capNext = false; afterDot = false; digitBeforeWord = false;
+          return result;
+        }
+        digitBeforeWord = false;
+        return w.toLowerCase();
+      }).join('');
+    }).join('\n');
+  }
+  const isAddress = t => /^\d+\s+[A-Z]/.test(t);
+
+  const page = figma.root.children.find(p => p.id === '` + pageId + String.raw`');
+  if (!page) return { totalApplied: 0, totalFailed: 0, fontLoadErrors: [], samples: [] };
+
+  const changes = [], fontSet = new Set();
+  for (const n of page.findAll(nd => nd.type === 'TEXT')) {
+    const orig = n.characters;
+    if (!orig || !/[a-zA-Z]/.test(orig) || isAddress(orig)) continue;
+    const proposed = applyBrandFixes(toSC(orig));
+    if (proposed === orig) continue;
+    changes.push({ n, orig, proposed });
+    if (n.fontName !== figma.mixed) {
+      fontSet.add(JSON.stringify(n.fontName));
+    } else {
+      try {
+        for (let i = 0; i < orig.length; i++) {
+          const fn = n.getRangeFontName(i, i + 1);
+          if (fn !== figma.mixed) fontSet.add(JSON.stringify(fn));
+        }
+      } catch(_) {}
+    }
+  }
+
+  const loadErrors = [];
+  for (const fj of fontSet) {
+    try { await figma.loadFontAsync(JSON.parse(fj)); }
+    catch(e) { loadErrors.push(fj + ': ' + e.message); }
+  }
+
+  let applied = 0, failed = 0;
+  const samples = [];
+  for (const { n, orig, proposed } of changes) {
+    try {
+      n.characters = proposed;
+      applied++;
+      if (samples.length < 8)
+        samples.push('"' + orig.substring(0,50) + '" → "' + proposed.substring(0,50) + '"');
+    } catch(e) {
+      failed++;
+      samples.push('FAIL "' + orig.substring(0,50) + '": ' + e.message);
+    }
+  }
+  return { totalApplied: applied, totalFailed: failed, fontLoadErrors: loadErrors, samples };
+})()
+`;
+}
+
 // ─── Foundational Operations ──────────────────────────────────────────────────
 
 const operations = {
@@ -1296,7 +1404,50 @@ const operations = {
       await new Promise(r => setTimeout(r, 5000));
     }
     console.log(`\nFinished! Total instances reset: ${totalModified}`);
-  }
+  },
+
+  /**
+   * Apply sentence case to all text nodes, page by page (skips pages with "ignore" in name).
+   * Preserves acronyms, brand names (PaidHR, PaidLife), and words starting with two capitals.
+   * Usage: node bulk-operations.js --file "ta design v2.0.2" lint_sentence_case
+   */
+  lint_sentence_case: async () => {
+    let pages;
+    try {
+      pages = await send('figma_execute', {
+        code: `figma.root.children.map(p => ({ id: p.id, name: p.name }))`,
+      }, 60000);
+    } catch (err) {
+      console.error('Failed to get pages:', err.message);
+      return;
+    }
+
+    const toProcess = pages.filter(p => !/\bignore\b/i.test(p.name));
+    const skipped   = pages.filter(p => /\bignore\b/i.test(p.name));
+    console.log(`Pages: ${toProcess.length} to process, ${skipped.length} skipped`);
+    if (skipped.length) console.log(`  Skipped: ${skipped.map(p => p.name).join(', ')}`);
+    console.log('');
+
+    let grandApplied = 0, grandFailed = 0;
+    for (const page of toProcess) {
+      process.stdout.write(`[${page.name}] running... `);
+      try {
+        const r = await send('figma_execute', { code: makeSCPageCode(page.id) }, 3600000);
+        grandApplied += r.totalApplied;
+        grandFailed  += r.totalFailed;
+        const suffix = r.totalFailed ? `, ${r.totalFailed} failed` : '';
+        console.log(`${r.totalApplied} applied${suffix}`);
+        if (r.fontLoadErrors && r.fontLoadErrors.length)
+          r.fontLoadErrors.forEach(e => console.log('  font error: ' + e));
+        r.samples.forEach(s => console.log('  ' + s));
+      } catch (err) {
+        console.log(`ERROR: ${err.message}`);
+      }
+    }
+
+    console.log(`\nTotal applied : ${grandApplied}`);
+    console.log(`Total failed  : ${grandFailed}`);
+  },
 };
 
 // ─── CLI Entry ────────────────────────────────────────────────────────────────
