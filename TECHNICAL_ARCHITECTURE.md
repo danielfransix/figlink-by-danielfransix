@@ -13,11 +13,121 @@ Both modes use the **same plugin** (`figma-plugin/`) and **same link server** (`
 
 ---
 
-## 1. System Overview
+## 1. The WebSocket System (Standalone)
+
+The WebSocket layer is the core of Figlink. Everything else — MCP, CLI tools, bulk scripts — is built on top of it.
+
+### How it works
+
+```
+node start.js
+  │
+  └─ spawns ──► link-server/server.js   (ws://localhost:9001)
+                      │                        ▲
+                      │  routes commands        │ registers + executes
+                      ▼                        │
+               figma-plugin/ui.html ◄──────────┘
+                      │ postMessage
+                      ▼
+               figma-plugin/code.js   (Figma Plugin API — reads/writes the document)
+```
+
+1. **`start.js`** launches `link-server/server.js` on port 9001 and keeps it alive.
+2. **The Figma plugin** (`ui.html` + `code.js`) connects to `ws://localhost:9001` and registers itself with the file key.
+3. **A CLI tool** (e.g. `node tools/figma.js get_selection`) opens a one-shot WebSocket, sends a command JSON, receives the result JSON, and closes the connection.
+4. The **link server** routes the command to the correct plugin instance and relays the result back to the caller.
+
+### One-shot command flow
+
+```
+tools/figma.js
+  │  open WebSocket to ws://localhost:9001
+  │  send { id: "uuid-1", command: "get_selection", params: {} }
+  ▼
+link-server/server.js
+  │  reads system.md, sends active_prompt (skipped by caller)
+  │  finds plugin registered for fileKey
+  │  stores pending["uuid-1"] = { sender }
+  │  forwards command to plugin
+  ▼
+figma-plugin/ui.html (postMessage to code.js)
+  ▼
+figma-plugin/code.js
+  │  runs getSelection() against Figma Plugin API
+  │  returns result to ui.html via postMessage
+  ▼
+figma-plugin/ui.html
+  │  sends { id: "uuid-1", result: [...] } over WebSocket
+  ▼
+link-server/server.js
+  │  pending["uuid-1"].sender.send(result)
+  │  pending.delete("uuid-1")
+  ▼
+tools/figma.js
+  │  receives result, prints JSON to stdout
+  └─ closes WebSocket, process.exit(0)
+```
+
+The server maintains `pending: Map<id, { sender, fileKey, createdAt }>` for all in-flight commands. Any entry older than 30 seconds is swept by a TTL interval and the caller receives a timeout error.
+
+---
+
+## 2. The MCP System
+
+The MCP layer wraps the WebSocket system in a typed HTTP API that AI assistants can discover and call.
+
+### How it works
+
+```
+figma-mcp/start-mcp.bat
+  │
+  ├─ starts Figlink (node start.js → link-server on :9001)
+  │
+  ├─ starts figma-mcp/server.js  (Streamable HTTP on :39399)
+  │      └─ imports bridge.js on startup
+  │
+  └─ [optional] starts ngrok http 39399  (for web AI access)
+```
+
+```
+figma-mcp/bridge.js   ──persistent ws──►  link-server/server.js  ◄──ws──  figma-plugin/
+(one connection, kept alive,               (ws://localhost:9001)
+ auto-reconnects on drop)
+```
+
+### MCP tool call flow
+
+```
+AI (IDE or web)
+  │  HTTP POST http://localhost:39399/  (JSON-RPC tool call)
+  ▼
+figma-mcp/server.js
+  │  StreamableHTTPServerTransport routes to tool handler
+  │  handler calls bridge.sendCommand('get_selection', params, fileKey)
+  ▼
+figma-mcp/bridge.js
+  │  sends { id: "uuid-5", command: "get_selection", params } over persistent ws
+  ▼
+link-server/server.js
+  │  same routing as standalone (plugin → result)
+  ▼
+figma-mcp/bridge.js
+  │  pending["uuid-5"].resolve(result)
+  ▼
+figma-mcp/server.js
+  │  formatResult(result) → MCP content items
+  └─ HTTP response to AI
+```
+
+**The bridge is the key difference.** In Native IDE mode the CLI opens a new WebSocket per command. In MCP mode the bridge holds one persistent WebSocket, and every tool call reuses it. To the link server and plugin, both look identical — just WebSocket clients sending command JSON.
+
+---
+
+## 3. System Overview
 
 ```
 ┌───────────────────────────────────────────────────────────────────────────┐
-│  MODE 1 — Native IDE                                                      │
+│  MODE 1 — Native IDE (standalone WebSocket)                               │
 │                                                                           │
 │  AI in IDE                                                                │
 │    │  terminal: node tools/figma.js get_selection                         │
@@ -40,9 +150,7 @@ Both modes use the **same plugin** (`figma-plugin/`) and **same link server** (`
 └───────────────────────────────────────────────────────────────────────────┘
 ```
 
-**The bridge is the key difference.** In Native IDE mode, the AI spawns a new `ws` connection per command (one-shot). In MCP mode, the bridge maintains a persistent WebSocket to the link server, and `server.js` calls `bridge.sendCommand()` for every MCP tool invocation.
-
-**Shared backend:**
+**Shared backend (both modes use this):**
 ```
 start.js  (launcher / watcher / IPC parent)
     │
@@ -50,17 +158,20 @@ start.js  (launcher / watcher / IPC parent)
     ▼
 link-server/server.js   ◄──── ws://localhost:9001 ────►  figma-plugin/ui.html ↔ code.js  (File A)
                                                     ────►  figma-plugin/ui.html ↔ code.js  (File B)
-                              ▲                       
-                              │  WebSocket            
-                    ┌─────────┴─────────┐
-                    │                   │
-              tools/figma.js      figma-mcp/bridge.js
-              (Native IDE)        (MCP mode)
+                              ▲
+                              │  WebSocket
+                    ┌─────────┴──────────────┐
+                    │                        │
+          tools/figma.js              figma-mcp/bridge.js
+          tools/bulk-operations.js    (MCP mode — persistent)
+          tools/process.js
+          tools/export.js
+          (Native IDE — one-shot per command)
 ```
 
 ---
 
-## 2. Components
+## 4. Components
 
 ### `start.js` — Launcher, watcher, IPC parent
 
@@ -150,6 +261,7 @@ Both `error` and `errorType` (`err.name`) are included in error responses.
 | Category | Commands |
 |----------|---------|
 | **Query** | `ping`, `get_selection`, `get_nodes`, `get_nodes_flat`, `get_page_frames`, `get_pages`, `set_current_page`, `get_local_styles`, `get_local_variables`, `get_all_available_variables`, `get_all_document_variables`, `resolve_variables` |
+| **Arbitrary execution** | `figma_execute` — runs any JS string in the plugin context and returns the result; used by CLI tools that generate code dynamically |
 | **Rename** | `rename_node`, `bulk_rename` |
 | **Text** | `set_characters`, `bulk_set_characters`, `apply_text_style`, `bulk_apply_text_style` |
 | **Color** | `apply_fill_style`, `apply_fill_variable`, `bulk_apply_fill_variable` |
@@ -165,24 +277,14 @@ Both `error` and `errorType` (`err.name`) are included in error responses.
 
 **Key implementation details:**
 
-- **Spatial coordinates** — `serializeNode()` includes `x`, `y`, `width`, `height` on every node that has them. This benefits both text-based and screenshot tools.
-- `SETTABLE_PROPERTIES` — The exhaustive list of modifiable fields, expanded to include:
-  - **Prototyping:** `reactions`, `scrollBehavior`, `overflowDirection`, `flowStartingPoints`
-  - **Advanced Layout:** `layoutWrap`, `layoutPositioning`, `itemReverseZIndex`, `strokesIncludedInLayout`, `primaryAxisAlignItems`, `counterAxisAlignItems`
-  - **Typography:** `lineHeight`, `letterSpacing`, `paragraphSpacing`, `textCase`, `textDecoration`, `textAlignHorizontal`, `textAlignVertical`, `textAutoResize`
-  - **Styling:** `cornerSmoothing`, `rotation`
-- `getNodes({ nodeId, depth })` — depth is clamped to `Math.max(0, depth)` before recursion.
-- `getNodesFlat({ nodeId, skipVectors, skipInstanceChildren })` — walks the tree with a `depth > 100` recursion guard, with yield points every 1000 nodes (`await setTimeout(5)`) to prevent event loop starvation. Vector-type nodes are skipped when `skipVectors: true`. Instance children (IDs containing `;`) are skipped when `skipInstanceChildren: true`.
+- **Spatial coordinates** — `serializeNode()` includes `x`, `y`, `width`, `height` on every node that has them.
+- `SETTABLE_PROPERTIES` — The exhaustive list of modifiable fields, including prototyping (`reactions`, `scrollBehavior`), advanced layout (`layoutWrap`, `layoutPositioning`), and typography (`lineHeight`, `letterSpacing`, `textCase`).
+- `getNodesFlat({ nodeId, skipVectors, skipInstanceChildren })` — walks the tree with a `depth > 100` recursion guard, with yield points every 1000 nodes (`await setTimeout(5)`) to prevent event loop starvation.
 - `serializeNode(node, depth)` — recursively serializes nodes to plain objects. Handles `figma.mixed` (serialized as `null`), fills, bound variables, corner radius, padding/spacing, text properties, prototyping logic, and style names. Stops recursion at depth 0, includes `childCount` instead.
-- `serializeBoundVariables(node)` — flattens bound variable objects to their `id` strings; normalizes both single bindings and array bindings.
-- `getAllAvailableVariables()` — imports `COLOR` and `FLOAT` variables from all connected team library collections, deduplicates against local variables, logs failures via `console.warn`.
-- `getAllDocumentVariables()` — walks the entire current page collecting all variable IDs from `boundVariables` and fill bindings, then resolves each. Logs individual resolution failures via `console.warn`.
 - All font loads use `ensureFontLoaded(fontName)`.
 - `swapInstances(containerId, newComponentSetId, searchPattern)` — finds instances in the container matching `searchPattern` (case-insensitive, defaults to `"button"`, empty string matches all). Matches variant properties by name parsing, swaps component, restores text, adjusts layout constraints.
-- `cloneComponentSet` — marks unwanted variant components as `name: "DELETE_ME", visible: false` rather than deleting immediately.
-- `resetInstanceSpacing(nodeId)` — walks the subtree, collects all `INSTANCE` nodes with auto-layout, compares 6 spacing fields against `mainComponent`, resets any that differ. Returns `{ instancesModified, fieldsReset, rootId, rootName }`.
-- `resetInstanceTextStyles(nodeId)` — walks instances, finds descendant `TEXT` nodes, locates corresponding master text node via child-index path replay (`findCorrespondingMasterNode`), resets `textStyleId` if it differs.
-- `unclipTextParentFrames(nodeId)` — finds container nodes with `clipsContent: true` and direct `TEXT` children, sets `clipsContent = false`.
+- `resetInstanceSpacing(nodeId)` — walks the subtree, collects all `INSTANCE` nodes with auto-layout, compares 6 spacing fields against `mainComponent`, resets any that differ.
+- `resetInstanceTextStyles(nodeId)` — walks instances, finds descendant `TEXT` nodes, locates corresponding master text node via child-index path replay, resets `textStyleId` if it differs.
 
 #### Screenshot & Visual Agent
 
@@ -203,9 +305,9 @@ return {
 **Key screenshot utilities:**
 
 - `uint8ToBase64(bytes)` — chunked base64 encoding using 32KB chunks via `String.fromCharCode.apply()`. Avoids O(n²) garbage collection on large exports.
-- `exportNodeAsImage(node, options)` — unified export entry point. Auto-scale-down: if a node's longest dimension exceeds 4000px at the requested scale, the scale is automatically reduced. Returns the `__figlink_result_type: 'image'` envelope.
-- `deduplicateNodes(nodes)` — walks the parent chain of each node. If any ancestor is already in the result set, the child is excluded. Prevents redundant screenshots (e.g. selecting a Frame and a Button inside it yields one image of the Frame).
-- All gallery-style screenshot tools follow this pattern: **dedup → paginate (`page`/`pageSize`/`hasMore`) → concurrent export (batch of 5) → partial-failure handling** (failed items become text error items instead of crashing the entire response).
+- `exportNodeAsImage(node, options)` — unified export entry point. Auto-scale-down: if a node's longest dimension exceeds 4000px at the requested scale, the scale is automatically reduced.
+- `deduplicateNodes(nodes)` — walks the parent chain of each node. If any ancestor is already in the result set, the child is excluded. Prevents redundant screenshots.
+- All gallery-style screenshot tools follow this pattern: **dedup → paginate (`page`/`pageSize`/`hasMore`) → concurrent export (batch of 5) → partial-failure handling**.
 
 **Screenshot tools:**
 
@@ -241,8 +343,8 @@ The visible Figma panel. Bridges `code.js` and the WebSocket server via `postMes
 
 **Connection management:**
 - On `ws.onopen`: resets `retryAttempt = 0`, sends registration, flushes `pendingMessages`.
-- On `ws.onclose`: computes retry delay with **exponential backoff + jitter**: `Math.min(30000, 2500 × 2^retryAttempt) + rand(0, 500)ms`. Increments `retryAttempt`. Gives delays of ~2.5s, ~5s, ~10s, ~20s, capped at ~30s.
-- `pendingMessages` — up to 10 messages buffered when disconnected, flushed on reconnect. When cap is hit, oldest dropped.
+- On `ws.onclose`: computes retry delay with **exponential backoff + jitter**: `Math.min(30000, 2500 × 2^retryAttempt) + rand(0, 500)ms`. Gives delays of ~2.5s, ~5s, ~10s, ~20s, capped at ~30s.
+- `pendingMessages` — up to 10 messages buffered when disconnected, flushed on reconnect. Oldest dropped when cap is hit.
 
 **UI details:**
 - Font: Cal Sans (Google Fonts CDN). Dark theme (`#141414`).
@@ -272,7 +374,7 @@ class FiglinkBridge {
 - **Persistent connection** — one WebSocket for all MCP tool calls. No connect-per-call overhead.
 - **30-minute default timeout** — much longer than the CLI's 15 s, accommodating large-page operations.
 - **Auto-reconnect** — on disconnect, retries every 5 seconds until reconnected. During reconnect, pending commands reject with a disconnect error.
-- **Ignores `active_prompt`** — the bridge resolves only by `msg.id` match, so the auto-injected system prompt is silently discarded.
+- **Ignores `active_prompt`** — resolves only by `msg.id` match, so the auto-injected system prompt is silently discarded.
 
 ---
 
@@ -286,7 +388,7 @@ An HTTP server on port 39399 that exposes Figlink as typed MCP tools using `Stre
 
 **Port:** `39399` (changed from `3000` in v1.0.1 to avoid conflicts with other local tools).
 
-**Transport:** Streamable HTTP at `http://localhost:39399`. Uses `sessionIdGenerator: () => randomUUID()` with automatic session tracking (`transports` map). Sessions expire when the client disconnects; the map entry is deleted in `onsessionclosed`.
+**Transport:** Streamable HTTP at `http://localhost:39399`. Uses `sessionIdGenerator: () => randomUUID()` with automatic session tracking (`transports` map). Sessions expire when the client disconnects.
 
 **Response formatting:**
 
@@ -336,7 +438,7 @@ function formatResult(result) {
 4. **Auto-starts ngrok** on port 39399 if `ngrok` is in PATH (for Web AI mode). Opens a separate terminal.
 5. Starts **MCP server** on `http://localhost:39399` in a new terminal.
 
-**Mac (`start-mcp.command`):** Same logic, adapted for macOS shell (`&&` chaining, `open -a Terminal`).
+**Mac (`start-mcp.command`):** Same logic, adapted for macOS shell.
 
 ---
 
@@ -355,14 +457,14 @@ node tools/figma.js [--file <fileKey|figmaUrl>] <command> [params-json]
 - `list_connected_files` — returns all files with an active plugin connection.
 
 **Connection behavior:**
-- Opens a new WebSocket per invocation. 15 s timeout (`COMMAND_TIMEOUT_MS = 15000`).
-- Exports `sendCommand` so `tools/process.js` can reuse the WebSocket helper.
+- Opens a new WebSocket per invocation. 15 s timeout.
+- Useful as a debug CLI or for simple one-off queries. For long-running operations, use `bulk-operations.js` which has a 40-minute default.
 
 ---
 
 ### `tools/process.js` — Standardization processor
 
-Implements the design system standardization workflow. Uses `sendCommand` from the same file.
+Implements the design system standardization workflow. Manages font, color, and spacing binding across entire files.
 
 **CLI:**
 ```bash
@@ -387,19 +489,93 @@ const FLOAT_MAX_DIFF         = 2;      // Max pixel difference to bind a spacing
 3. Builds mutation lists (rename, text styles, color variables, spacing/radius, clip content).
 4. Chunks `bulk_set_variable_binding` and `bulk_set_property` at 500 items per call.
 
-**`standardize-page`:** Processes up to 3 frames in parallel via `Promise.all`. Frame failures are caught and logged.
+**`standardize-page`:** Processes up to 3 frames in parallel via `Promise.all`.
 
 **`standardize-file`:** Iterates all pages, switches to each, calls `standardizePage()`.
 
+Also exports `sendCommand` via `module.exports` for use as a library by other scripts.
+
 ---
 
-## 3. Two Modes of Operation
+### `tools/bulk-operations.js` — Bulk operations runner
+
+The central script for heavy, long-running Figma operations that are too large for a single MCP tool call. Uses `figma_execute` to send arbitrary JavaScript strings into the plugin context, enabling operations that span entire files without hitting timeout limits.
+
+```bash
+node tools/bulk-operations.js [--file <fileKey>] <command> [args]
+```
+
+**Architecture:** Each operation in the `operations` object generates and sends one or more `figma_execute` code strings. The code runs inside the Figma plugin and returns a plain JSON result. The Node.js side handles paging, batching, logging, and retries.
+
+**Default timeout:** 40 minutes per `send()` call. Per-page operations like `lint_sentence_case` use 1-hour timeouts.
+
+**Available commands:**
+
+| Command | What it does |
+|---------|-------------|
+| `bind_variable <property> <variableId> [nodeType]` | Binds a property on all matching nodes across all pages to a specific variable ID. |
+| `replace_text <json_map_path>` | Bulk updates text content for specific node IDs from a JSON map file. |
+| `reset_instances [preserveText]` | Calls `resetOverrides()` on all instances across all pages, optionally preserving text. |
+| `scan_text <regex>` | Finds all text nodes matching a regex, returns up to 100 matches. |
+| `set_property <property> <value> [nodeType]` | Sets a scalar property (e.g. `clipContent=false`) on all matching nodes across all pages. |
+| `exclude_components <nodeId>` | Prefixes all component/component-set names with `.` inside a target frame to exclude from publishing. |
+| `bind_text_style_font_sizes` | Binds `fontSize` on local text styles to matching FLOAT variables, preferring variables with "size" or "font" in their name. |
+| `update_all_strokes` | Binds stroke widths of 1px to a specific border-width variable across specified pages (hardcoded page list for the active project). |
+| `update_frame_strokes <frameId>` | Same as above but scoped to master components inside a single frame, processed in batches of 10. |
+| `reset_instance_strokes` | Resets stroke variable bindings on all instances to match their main component, page by page in batches of 50. |
+| `bulk_cleanup` | Remaps spacing values (16 → 12) and binds padding/gap fields to FLOAT variables on specified pages. |
+| `relink_instances` | Swaps instances to updated component library keys. Processes pages → instances → batches, with event loop yields between each. |
+| `lint_sentence_case` | Applies sentence case to all text nodes across every page (skipping pages with "ignore" in the name), page by page. |
+
+**`lint_sentence_case` — sentence case linter:**
+
+Uses `makeSCPageCode(pageId)` to generate a self-contained async IIFE for each page, sent as a single `figma_execute` call. This avoids plugin timeouts on large files by isolating each page into its own execution unit.
+
+The generated code:
+1. Finds all TEXT nodes on the page.
+2. For each, computes the sentence-cased version of the text.
+3. Collects all fonts used by changed nodes, loads them with `figma.loadFontAsync`.
+4. Applies `n.characters = proposed` and logs samples/errors.
+5. Returns `{ totalApplied, totalFailed, fontLoadErrors, samples }`.
+
+**Sentence case algorithm:**
+- Tokenizes each line into word/separator tokens.
+- Tracks `capNext` (start of sentence), `afterDot` (seen `.!?`), `digitBeforeWord` (digit separator before word — suppresses capitalization to avoid "18 Days" → "18 days").
+- **Acronym detection (three-tier):**
+  1. Exact match against `ACRONYMS` set (`HR`, `KYC`, `AM`, `PM`, etc.)
+  2. Case-insensitive match (`am` → `AM`) so lowercased acronyms aren't sentence-cased.
+  3. Two-leading-capitals heuristic (`/^[A-Z]{2}/`) — treats `NGN`, `MTN`, `EWA`, etc. as acronyms without needing explicit entries.
+- **Brand name restoration:** After `toSC()`, applies regex replacements to restore `PaidHR` and `PaidLife` regardless of what sentence casing did to them.
+- Preserves `I` pronoun and `I'` / `I've` contractions.
+- Skips text that looks like a street address (`/^\d+\s+[A-Z]/`).
+
+---
+
+### `tools/export.js` — Image export tool
+
+Exports image-fill nodes from a Figma frame to disk as PNG or SVG files.
+
+```bash
+node tools/export.js <frameNodeId> <outputDir> [--format PNG|SVG] [--scale 2]
+```
+
+**Workflow:**
+1. Sends `find_image_nodes` to find all nodes with image fills inside the target frame.
+2. Renames each to a clean URL slug (strips Figma-generated noise like `Gemini_Generated_Image_*`, deduplicates with counters). Instance sub-nodes (`I…;…` ID format) are assigned slugs but skipped for the Figma rename since they're component overrides.
+3. Creates the output directory if it doesn't exist.
+4. Sends `export_node` for each, writing the returned base64 to disk.
+
+Uses its own inline `send()` WebSocket helper with a 60-second timeout per call.
+
+---
+
+## 5. Two Modes of Operation
 
 ### Native IDE Mode
 
 **Start:** `Windows Start Figlink.bat` / `Mac Start Figlink.command` (or `node start.js`).
 
-The AI runs commands by executing `node tools/figma.js` in the terminal. Each command opens a new WebSocket, sends the command, prints JSON to stdout, and exits.
+The AI runs commands by executing `node tools/figma.js` in the terminal. Each command opens a new WebSocket, sends the command, prints JSON to stdout, and exits. For long-running bulk work, scripts in `tools/` (e.g. `bulk-operations.js`, `process.js`) follow the same pattern but with much longer per-call timeouts and internal batching.
 
 **Best for:** AI IDEs with terminal access (Cursor, Windsurf, Trae, VS Code). No extra dependencies.
 
@@ -431,7 +607,7 @@ Paste the ngrok Forwarding URL into the web AI's MCP endpoint field.
 
 ---
 
-## 4. Prompt system
+## 6. Prompt system
 
 **File:** `prompts/system.md`
 
@@ -443,12 +619,13 @@ Changes to `system.md` take effect immediately without requiring a server restar
 
 ---
 
-## 5. File structure
+## 7. File structure
 
 ```
 figlink/
 ├── README.md                       # User guide with setup for all modes
-├── TECHNICAL_ARCHITECTURE.md       # This file
+├── docs-resources/
+│   └── TECHNICAL_ARCHITECTURE.md  # This file
 ├── .gitignore
 │
 ├── figlink-codebase/               # Core Figlink system
@@ -464,9 +641,9 @@ figlink/
 │   │   └── package.json            # ws dependency
 │   ├── tools/
 │   │   ├── figma.js                # One-shot CLI client (Native IDE mode)
-│   │   ├── process.js              # Standardization processor
-│   │   ├── bulk-operations.js      # Bulk instance swap / relinking
-│   │   └── export.js               # Export utilities
+│   │   ├── process.js              # Design system standardization (color/spacing/text binding)
+│   │   ├── bulk-operations.js      # Long-running bulk operations (lint, stroke reset, relinking, etc.)
+│   │   └── export.js               # Export image-fill nodes to disk
 │   ├── prompts/
 │   │   ├── system.md               # System instructions auto-injected to AI
 │   │   └── library/                # Prompt templates
@@ -479,17 +656,14 @@ figlink/
 │   ├── start-mcp.command           # Mac startup
 │   └── package.json                # @modelcontextprotocol/sdk + zod
 │
-├── release-notes/                  # Version release notes
-│   ├── v1.0.0-may-16.md
-│   └── v1.0.1-may-16.md
-│
-└── .vscode/                        # IDE settings
-    └── settings.json
+└── release-notes/                  # Version release notes
+    ├── v1.0.0-may-16.md
+    └── v1.0.1-may-16.md
 ```
 
 ---
 
-## 6. Full data flow examples
+## 8. Full data flow examples
 
 ### Native IDE Mode
 
@@ -517,11 +691,19 @@ figlink/
     → server finds pending entry 'uuid-1', deletes it, sends result to figma.js
     → figma.js prints JSON to stdout, closes WebSocket, exits 0
 
-4.  AI edits figma-plugin/code.js
+4.  AI runs: node tools/bulk-operations.js --file "Design System" lint_sentence_case
+    → pings server (5s timeout), confirms plugin is connected
+    → sends figma_execute to get page list
+    → for each page (skipping "ignore" pages):
+        → sends figma_execute with generated sentence-case IIFE (1-hour timeout)
+        → plugin executes: scans TEXT nodes, loads fonts, applies sentence case
+        → prints results per page
+    → prints grand total
+
+5.  AI edits figma-plugin/code.js
     → fs.watch fires after 300ms debounce
     → start.js sends { type: 'code_changed' } over IPC
     → server.js broadcasts { type: 'code_changed' } to all connected plugins
-    → plugin ui.html shows "Plugin code updated" banner
     → user closes and re-runs the plugin
 ```
 
@@ -540,10 +722,9 @@ figlink/
 3.  MCP server starts on http://localhost:39399
     → AI client (IDE or web) sends initialize request
     → StreamableHTTPServerTransport creates session (randomUUID)
-    → transports[id] = transport
     → AI discovers 76 figma_* tools
 
-4.  User opens Figma and runs plugin (same as Native IDE)
+4.  User opens Figma and runs plugin (same as Native IDE step 2)
 
 5.  AI calls figma_screenshot_selection (example)
     → MCP server receives HTTP POST at / with JSON-RPC tool call
@@ -563,7 +744,7 @@ figlink/
 
 ---
 
-## 7. Error handling
+## 9. Error handling
 
 | Scenario | Behaviour |
 |----------|-----------|
@@ -577,6 +758,7 @@ figlink/
 | `applyFillVariable` with out-of-bounds `fillIndex` | Throws with fill count in message |
 | `getNodes` with negative depth | Depth clamped to 0 |
 | `figma.loadFontAsync` called repeatedly | `ensureFontLoaded` cache prevents redundant async calls |
+| Unloaded font in `lint_sentence_case` | Node is skipped and counted as `totalFailed`; font name logged as `fontLoadErrors` |
 | Empty `valuesByMode` on FLOAT variable | Variable silently skipped during `floatVars` construction |
 | Color match too far from any variable | Skipped when RGB Manhattan distance > `COLOR_MAX_DIST` (30) |
 | Spacing/radius match too far | Skipped when diff > `FLOAT_MAX_DIFF` (2) |
@@ -593,10 +775,11 @@ figlink/
 | MCP bridge disconnected from Figlink | Auto-reconnects every 5s; pending commands reject with disconnect error |
 | ngrok not found in PATH | Script prints notice instead of crashing; user can run ngrok manually |
 | `node.find()` iteration on large pages | Yield points every 1000 nodes (`await setTimeout(5)`) prevent event loop starvation |
+| `bulk-operations.js` ping timeout | Exits immediately with "Figlink not reachable"; prevents running operations against a dead server |
 
 ---
 
-## 8. Limitations
+## 10. Limitations
 
 - **Plugin must stay open.** All commands time out if the plugin is closed. There is no persistent background execution inside Figma.
 - **Plugin can't self-reload.** The Figma Plugin API does not expose a reload method. Code changes require the user to manually re-run the plugin.
@@ -605,9 +788,10 @@ figlink/
 - **Mixed properties.** `figma.mixed` is serialized as `null`. Fields with mixed values are skipped during standardization matching.
 - **Vector payloads.** `skipVectors: true` is the default in `get_nodes_flat`. Large vector networks produce payloads that can approach WebSocket message size limits.
 - **Standardization is non-transactional.** If a batch command fails partway through, earlier chunks are already applied. There is no rollback.
-- **15 s CLI timeout insufficient for large-page operations.** `tools/figma.js` hard-codes a 15 s timeout. Commands that call `findAll` across a large page will exceed this. Use the MCP bridge (30-min timeout) or the inline WebSocket script pattern with a 120 s timeout.
+- **15 s CLI timeout insufficient for large-page operations.** `tools/figma.js` hard-codes a 15 s timeout. Commands that call `findAll` across a large page will exceed this. Use the MCP bridge (30-min timeout) or `bulk-operations.js` (40-min default, 1-hour per-page for linting).
 - **Team library access requires Figma Organization plan.** `figma.teamLibrary` APIs are only available in paid plans. On free plans, `getAllAvailableVariables` will only return local variables.
 - **MCP sessions are ephemeral.** The MCP server uses in-memory session storage. If the server restarts, all active sessions are lost and the AI must re-initialize.
 - **Screenshots are synchronous within Figma.** `node.exportAsync()` runs on the Figma main thread. Large or numerous exports can cause brief UI freezes. Gallery tools mitigate this with concurrency caps (batch of 5).
 - **No persistent MCP auth.** The MCP server has no authentication by design (runs on localhost). For ngrok exposure, use `ngrok http 39399 --basic-auth "user:pass"` if your platform requires credentials.
 - **ngrok free plan has rotating URLs.** Each `ngrok http` invocation assigns a new subdomain. Web AI users must update their MCP endpoint URL after each restart. Upgrade to ngrok paid plan for a reserved domain.
+- **`bulk-operations.js` operations are project-specific.** Some commands (`update_all_strokes`, `bulk_cleanup`, `reset_instance_strokes`) contain hardcoded page lists or variable keys specific to the active project. They are not generic utilities and should be adapted before use on a different file.
