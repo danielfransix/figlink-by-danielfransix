@@ -1431,7 +1431,7 @@ function applyFillVariable(nodeId, variableId, fillIndex) {
   const variable = figma.variables.getVariableById(variableId);
   if (!variable) throw new Error(`Variable ${variableId} not found`);
 
-  const fills = structuredClone(node.fills);
+  const fills = JSON.parse(JSON.stringify(node.fills));
   if (!fills.length) fills.push({ type: 'SOLID', color: { r: 0, g: 0, b: 0 } });
 
   if (fillIndex < 0 || fillIndex >= fills.length) {
@@ -2405,7 +2405,7 @@ function setImageFill(nodeId, imageData, format, fillIndex) {
   const imageBytes = typeof imageData === 'string' ? figma.base64Encode(imageData) : imageData;
   const img = figma.createImage(imageBytes);
   const fill = { type: 'IMAGE', imageHash: img.hash, scaleMode: 'FILL' };
-  const fills = structuredClone(node.fills);
+  const fills = JSON.parse(JSON.stringify(node.fills));
   while (fills.length <= idx) fills.push({ type: 'SOLID', color: { r: 1, g: 1, b: 1 } });
   fills[idx] = fill;
   node.fills = fills;

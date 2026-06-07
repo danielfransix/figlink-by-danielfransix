@@ -187,6 +187,130 @@ const operations = {
   },
 
   /**
+   * Extract unique solid fill colors from a node subtree and create COLOR variables.
+   * Useful for: Building a variable palette from existing design elements.
+   * Usage: node bulk-operations.js extract_fills_to_variables <nodeId> <collectionName> <variablePrefix>
+   * Example: node bulk-operations.js extract_fills_to_variables 1885:1282 my-ds "color/palette/"
+   */
+  extract_fills_to_variables: async (nodeId, collectionName, variablePrefix) => {
+    if (!nodeId || !collectionName || !variablePrefix) {
+      console.error('Usage: extract_fills_to_variables <nodeId> <collectionName> <variablePrefix>');
+      return;
+    }
+    const prefix = variablePrefix.endsWith('/') ? variablePrefix : variablePrefix + '/';
+    console.log(`Extracting fill colors from node ${nodeId} → "${collectionName}" with prefix "${prefix}"...`);
+    const code = `
+      (async () => {
+        function rgbToHex(r, g, b) {
+          const toHex = v => Math.round(v * 255).toString(16).padStart(2, '0');
+          return toHex(r) + toHex(g) + toHex(b);
+        }
+        const rootNode = figma.getNodeById(${JSON.stringify(nodeId)});
+        if (!rootNode) return { error: 'Node not found' };
+        const colorSet = new Set();
+        function collectColors(n) {
+          if (n.fills && Array.isArray(n.fills)) {
+            for (const fill of n.fills) {
+              if (fill.type === 'SOLID' && fill.color && fill.visible !== false)
+                colorSet.add(rgbToHex(fill.color.r, fill.color.g, fill.color.b));
+            }
+          }
+          if (n.children) for (const c of n.children) collectColors(c);
+        }
+        collectColors(rootNode);
+        const collections = await figma.variables.getLocalVariableCollectionsAsync();
+        const collection = collections.find(c => c.name === ${JSON.stringify(collectionName)});
+        if (!collection) return { error: 'Collection not found' };
+        const modeId = collection.modes[0]?.modeId;
+        if (!modeId) return { error: 'Collection has no modes' };
+        const existing = await figma.variables.getLocalVariablesAsync('COLOR');
+        const existingNames = new Set(
+          existing.filter(v => v.variableCollectionId === collection.id).map(v => v.name)
+        );
+        const prefix = ${JSON.stringify(prefix)};
+        let created = 0, skipped = 0;
+        const errors = [];
+        for (const hex of [...colorSet].sort()) {
+          const name = prefix + hex;
+          if (existingNames.has(name)) { skipped++; continue; }
+          try {
+            const v = figma.variables.createVariable(name, collection, 'COLOR');
+            v.setValueForMode(modeId, {
+              r: parseInt(hex.slice(0,2), 16) / 255,
+              g: parseInt(hex.slice(2,4), 16) / 255,
+              b: parseInt(hex.slice(4,6), 16) / 255,
+              a: 1,
+            });
+            created++;
+          } catch(e) { errors.push(name + ': ' + e.message); }
+        }
+        return { totalColors: colorSet.size, created, skipped, errors: errors.slice(0, 10) };
+      })()
+    `;
+    const res = await runFigmaCode(code);
+    console.log('Result:', res);
+  },
+
+  /**
+   * Bind solid fill colors on nodes to matching COLOR variables looked up by hex value.
+   * Variable names must follow the pattern: <variablePrefix><hex> (e.g. "color/palette/e8b89a").
+   * Useful for: Connecting hand-placed fills to their variable counterparts.
+   * Usage: node bulk-operations.js bind_fills_to_variables <nodeId> <variablePrefix> [nodeTypeFilter]
+   * Example: node bulk-operations.js bind_fills_to_variables 1885:1282 "color/palette/" RECTANGLE
+   */
+  bind_fills_to_variables: async (nodeId, variablePrefix, nodeTypeFilter = 'ALL') => {
+    if (!nodeId || !variablePrefix) {
+      console.error('Usage: bind_fills_to_variables <nodeId> <variablePrefix> [nodeTypeFilter]');
+      return;
+    }
+    const prefix = variablePrefix.endsWith('/') ? variablePrefix : variablePrefix + '/';
+    console.log(`Binding fills in node ${nodeId} to variables with prefix "${prefix}" (type: ${nodeTypeFilter})...`);
+    const code = `
+      (async () => {
+        function rgbToHex(r, g, b) {
+          const toHex = v => Math.round(v * 255).toString(16).padStart(2, '0');
+          return toHex(r) + toHex(g) + toHex(b);
+        }
+        const rootNode = figma.getNodeById(${JSON.stringify(nodeId)});
+        if (!rootNode) return { error: 'Node not found' };
+        const prefix = ${JSON.stringify(prefix)};
+        const filter = ${JSON.stringify(nodeTypeFilter)};
+        const targets = [];
+        function collect(n) {
+          if ((filter === 'ALL' || n.type === filter) && n.fills && Array.isArray(n.fills)) {
+            if (n.fills.some(f => f.type === 'SOLID' && f.visible !== false)) targets.push(n);
+          }
+          if (n.children) for (const c of n.children) collect(c);
+        }
+        collect(rootNode);
+        const variables = await figma.variables.getLocalVariablesAsync('COLOR');
+        const hexToVar = {};
+        for (const v of variables) {
+          if (v.name.startsWith(prefix)) hexToVar[v.name.slice(prefix.length)] = v;
+        }
+        let bound = 0, skipped = 0;
+        const missing = [];
+        for (const node of targets) {
+          const fillIdx = node.fills.findIndex(f => f.type === 'SOLID' && f.visible !== false);
+          if (fillIdx === -1) continue;
+          const hex = rgbToHex(node.fills[fillIdx].color.r, node.fills[fillIdx].color.g, node.fills[fillIdx].color.b);
+          const v = hexToVar[hex];
+          if (!v) { missing.push({ id: node.id, name: node.name, hex }); skipped++; continue; }
+          try {
+            node.fills = node.fills.map((f, i) =>
+              i === fillIdx ? figma.variables.setBoundVariableForPaint(f, 'color', v) : f
+            );
+            bound++;
+          } catch(e) { missing.push({ id: node.id, name: node.name, hex, error: e.message }); skipped++; }
+        }
+        return { total: targets.length, bound, skipped, missingVars: missing.slice(0, 20) };
+      })()
+    `;
+    const res = await runFigmaCode(code);
+    console.log('Result:', res);
+  },
+
+  /**
    * Bulk find and replace text across all pages based on a JSON map.
    * Useful for: Updating copy, fixing lorem ipsum.
    * Usage: node bulk-operations.js replace_text <json_map_path>

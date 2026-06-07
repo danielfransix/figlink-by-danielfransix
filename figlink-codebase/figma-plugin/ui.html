@@ -1,7 +1,9 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Figlink</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cal+Sans&display=swap" rel="stylesheet">
@@ -122,6 +124,7 @@
     }
     .hint-action.active code { color: #bbb; }
     .hint-action em { font-style: normal; color: #555; }
+    .hint-dimmed { color: #2a2a2a; }
 
     /* ── Code-changed banner ── */
     .banner {
@@ -283,8 +286,8 @@
       </span>
     </div>
     <div class="hint-row">
-      <span class="hint-os" style="color:#2a2a2a;">or</span>
-      <span class="hint-action" style="color:#2a2a2a;">
+      <span class="hint-os hint-dimmed">or</span>
+      <span class="hint-action hint-dimmed">
         Open terminal <em>inside the figlink folder</em>, run <code>node start.js</code>
       </span>
     </div>
