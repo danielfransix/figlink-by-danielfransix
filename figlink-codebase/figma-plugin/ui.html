@@ -6,12 +6,12 @@
   <title>Figlink</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cal+Sans&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Cal+Sans&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
-      font-family: 'Cal Sans', sans-serif;
+      font-family: 'DM Sans', system-ui, sans-serif;
       font-size: 16px;
       background: #141414;
       color: #c0c0c0;
@@ -114,7 +114,7 @@
     .hint-action.active { color: #c0c0c0; }
 
     .hint-action code {
-      font-family: 'Cal Sans', monospace;
+      font-family: 'DM Sans', monospace;
       font-size: 12px;
       background: #1e1e1e;
       color: #888;
@@ -170,7 +170,7 @@
       color: #0d0900;
       border: none;
       border-radius: 6px;
-      font-family: 'Cal Sans', sans-serif;
+      font-family: inherit;
       font-size: 12px;
       cursor: pointer;
       letter-spacing: 0.01em;
@@ -228,7 +228,6 @@
     }
 
     .author-label {
-      font-family: 'Cal Sans', sans-serif;
       font-size: 12px;
       color: #3a3a3a;
       letter-spacing: 0.06em;
@@ -236,14 +235,12 @@
     }
 
     .author-name {
-      font-family: 'Cal Sans', sans-serif;
       font-size: 12px;
       color: #c0c0c0;
       letter-spacing: 0.01em;
     }
 
     .footer-links {
-      font-family: 'Cal Sans', sans-serif;
       font-size: 12px;
       color: rgba(255, 255, 255, 0.75);
       letter-spacing: 0.01em;
@@ -332,6 +329,7 @@
     let retryTimer = null;
     let retryAttempt = 0;
     let pendingMessages = [];
+    let bannerVisible = false;
     let fileInfo = null; // { fileKey, fileName } — received from code.js on load
 
     // ── OS detection ──────────────────────────────────────────────────────────
